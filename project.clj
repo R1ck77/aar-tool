@@ -1,6 +1,4 @@
 (defproject android_development "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :description "Useful tasks for Android .aar libraries development"
+  :license {:name "Proprietary license (temporary)"}
   :eval-in-leiningen true)

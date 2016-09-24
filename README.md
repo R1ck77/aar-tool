@@ -1,25 +1,25 @@
 # android_development
 
-A Leiningen plugin to do many wonderful things.
+A Leiningen plugin to ease the development of Android .aar projects
 
 ## Usage
 
-FIXME: Use this for user-level plugins:
+Put `[android_development "0.1.0-SNAPSHOT"]` into the `:plugins`
+vector of your project.clj.
 
-Put `[android_development "0.1.0-SNAPSHOT"]` into the `:plugins` vector of your `:user`
-profile.
+Create a aar from the code:
 
-FIXME: Use this for project-level plugins:
+    $ lein android_development aar
 
-Put `[android_development "0.1.0-SNAPSHOT"]` into the `:plugins` vector of your project.clj.
+(it will trigger the compilation of a jar).
 
-FIXME: and add an example usage that actually makes sense:
+Watch for changes in the resources and update the `R.java` file as a
+consequence:
 
-    $ lein android_development
+    $ lein android_development update-R
 
 ## License
 
-Copyright © 2016 FIXME
+Copyright © 2016 Riccardo Di Meo
 
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Proprietary license (temporary)
