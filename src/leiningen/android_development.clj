@@ -14,21 +14,21 @@
           xs
           ))
 
-(defn- check-or-create-directory! [path]
-  (info "Checking for " path "existance")
-  )
+(defn- check-is-directory [path]
+  (info (str "Checking for \"" path "\" existance"))
+  (if (not (.isDirectory (java.io.File. path)))
+    (abort (str "The path \"" path "\" doesn't exist, or is not a directory"))))
 
 
 (defn- create-aar [project arguments]
-  (let [my-args (get-arguments project [:android-jar :aapt :aar-name :aot])]
+  (let [my-args (get-arguments project [:android-jar :aapt :aar-name :aot :res :source-paths])]
     (if (not= (:aot my-args) [:all])
       (abort (str ":aot :all must be specified in project.clj!" (:android-jar my-args)))
       (do
         ;;; TODO/FIXME: get the plugin in a sander way here (use the jar function directly?)
         (let [jar-path (second (first (leiningen.core.main/apply-task "jar" project [])))]
           (info "The jar is: " jar-path)
-          (check-or-create-directory! "src")
-          (check-or-create-directory! "res")
+          (check-is-directory (:res my-args))
           (info "create-aar executed")
           ;;; RUN AAPT
 ;;;; # The --output-text-symbols is paramento

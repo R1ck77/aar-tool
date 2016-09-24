@@ -12,6 +12,7 @@ You will need to add some configuration values to the `project.clj`:
     :android-jar  specify the location of the "android.jar" file
     :aapt         path to the "aapt" command to use
 	:aar-name     path to the destination .aar file
+    :res          location of the android "res" directory
 
 **TODO/FIXME** include the mechanism to find out the locations
 automatically if not specified
