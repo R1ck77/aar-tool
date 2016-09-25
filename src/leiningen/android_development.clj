@@ -17,8 +17,7 @@
               (assoc m v (get project v))
               (abort (str "Unable to find " v " in project.clj!"))))
           {}
-          xs
-          ))
+          xs))
 
 (defn- check-is-directory!
   "Check whether the specified path is a directory
@@ -36,15 +35,13 @@ If create-if-missing is set to true, the function will try to fix that, no solut
            (check-is-directory! path false))
          (abort (str "The path \"" path "\" doesn't exist, or is not a directory")))))))
 
-(defn- get-package-from-android-manifest [path]
-  "Read the manifest at path, and retun the package name
-
-Unused… Created because I misread the 'package' argument in the aapt arguments list :p"
-  (:package (:attrs (xml/parse path))))
-
 (defn- path-from-dirs [base & elements]
   "creating a Path in java 7 from clojure is messy"
   (java.nio.file.Paths/get base (into-array String elements)))
+
+(defn- copy-file [source-path dest-path]
+  "Kudos to this guy: https://clojuredocs.org/clojure.java.io/copy"
+  (io/copy (io/file source-path) (io/file dest-path)))
 
 (defn- run-aapt [aapt destpath manifest android-jar res]
   "Run the aapt command with the parameters required to generate a R.txt file
@@ -66,10 +63,6 @@ This will also generate a R.java file in destpath/src"
         (abort (str "Invocation of aapt failed with error: \"" (:err res) "\""))
         (info "Invocation of aapt successful")))))
 
-(defn- copy-file [source-path dest-path]
-  "Kudos to this guy: https://clojuredocs.org/clojure.java.io/copy"
-  (io/copy (io/file source-path) (io/file dest-path)))
-
 ;;;; TODO/FIXME: this is horrible and unportable. Use the java ZipOutputStream!
 (defn- zip-contents [work-path manifest res-dir jar]
   "Create a .aar library in a temporary location. Returns the path"
@@ -78,7 +71,7 @@ This will also generate a R.java file in destpath/src"
         aar (.toString (path-from-dirs work-path "library.aar"))]
    (debug (str "copying the classes jar into \"" cpath "\""))
    (copy-file jar cpath)
-   (debug (str "copyting the manifest \"" manifest "\" into \"" manifest-copy "\""))
+   (debug (str "copying the manifest \"" manifest "\" into \"" manifest-copy "\""))
    (copy-file manifest manifest-copy)
    (debug "invoking the zip command")
    (let [zip-args ["zip" "-r" "-9" aar expected-jar-name r-txt res-dir android-manifest-name :dir work-path]
@@ -90,8 +83,23 @@ This will also generate a R.java file in destpath/src"
          aar)
        (abort (str "zip failed with error: \"" (:err res) "\" (arguments: \"" zip-args "\""))))))
 
+
+(defn- convert-path-to-absolute [path]
+  (.getAbsolutePath (java.io.File. path)))
+
+(defn- absolutize-paths [m s]
+  (reduce (fn [res [key value]]
+            (assoc res
+                   key (if (contains? s key)
+                         (convert-path-to-absolute value)
+                         value)))            
+          {}
+          m))
+
 (defn- create-aar [project arguments]
-  (let [my-args (get-arguments project [:android-jar :aapt :aar-name :aot :res :source-paths :target-path :android-manifest])]
+  (let [my-args (absolutize-paths
+                 (get-arguments project [:android-jar :aapt :aar-name :aot :res :source-paths :target-path :android-manifest])
+                 #{:android-jar :aapt :aar-name :res :target-path :android-manifest})]
     (if (not= (:aot my-args) [:all])
       (abort (str ":aot :all must be specified in project.clj!" (:android-jar my-args)))
       (do
