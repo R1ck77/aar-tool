@@ -1,7 +1,8 @@
 (ns couchgames.utils.zip
   (import [java.util.zip ZipOutputStream ZipEntry]
           [java.io FileOutputStream File]
-          [java.nio.file Paths Path]))
+          [java.nio.file Paths Path]
+          [org.apache.commons.io IOUtils]))
 
 (defn open-zip! ^ZipOutputStream [^String path]
   (ZipOutputStream. (FileOutputStream. path)))
@@ -15,11 +16,13 @@
     ;;    (.setComment "This is a comment! Yay!")
     ))
 
+(defn- read-binary [path] (IOUtils/toByteArray (clojure.java.io/input-stream path)))
+
 (defn add-to-zip   
   ([^ZipOutputStream zos ^String path] (add-to-zip zos path path))
   ([^ZipOutputStream zos ^String path ^String as-path]
    (.putNextEntry zos (entry-from-path as-path))
-   (let [content (.getBytes (slurp path))] ;;;; this is a BUG, just here temporarily!
+   (let [content (read-binary path)]
      (.write zos  content 0 (count content)))
    (.closeEntry zos)
    zos))
