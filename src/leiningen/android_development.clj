@@ -61,8 +61,7 @@ This will also generate a R.java file in destpath/src"
                 "-S" res
                 "-J" src-path)]
       (if (not= 0 (:exit res))
-        (abort (str "Invocation of aapt failed with error: \"" (:err res) "\""))
-        (info "Invocation of aapt successful")))))
+        (abort (str "Invocation of aapt failed with error: \"" (:err res) "\""))))))
 
 (defn- zip-contents [work-path manifest res-dir jar]
   "Create a .aar library in a temporary location. Returns the path"
@@ -79,7 +78,7 @@ This will also generate a R.java file in destpath/src"
 
 
 (defn- convert-path-to-absolute [path]
-  (.getAbsolutePath (java.io.File. path)))
+  (.toString (.normalize (.toAbsolutePath (.toPath (java.io.File. path))))))
 
 (defn- absolutize-paths [m s]
   (reduce (fn [res [key value]]
@@ -95,36 +94,43 @@ This will also generate a R.java file in destpath/src"
   (try
     (.delete (java.io.File. destination))
     (catch Exception e (abort "Unable to remove the destination file" destination "to make space for the resulting aar")))
-   (.renameTo (java.io.File. source) (java.io.File. destination)))
+  (.renameTo (java.io.File. source) (java.io.File. destination)))
+
+(defn- check-arguments [params]
+  (let [manifest (:android-manifest params)
+        aapt-file (java.io.File. (:aapt params))]
+    (if (not (.canExecute aapt-file)) (abort (str (.toString aapt-file) " is not a valid executable")))
+    (if (not (.exists (java.io.File. (:android-jar params)))) (abort (str (:android-jar params) " is not a valid file")))
+    (if (not= "res" (.getName (java.io.File. (:res params)))) (abort "The :res option must point to a directory named \"res\""))
+    (if (not= android-manifest-name (.getName (java.io.File. manifest))) (abort "The :res option must point to a directory named \"" android-manifest-name "\""))
+    (if (not (.exists (java.io.File. manifest))) (abort (str "The file \"" manifest "\" does not exist")))
+    (if (not= (:aot params) [:all]) (abort (str ":aot :all must be specified in project.clj!" (:android-jar params))))))
 
 (defn- create-aar [project arguments]
   (let [my-args (absolutize-paths
                  (get-arguments project [:android-jar :aapt :aar-name :aot :res :source-paths :target-path :android-manifest])
                  #{:android-jar :aapt :aar-name :res :target-path :android-manifest})]
-    (assert (= "res" (.getName (java.io.File. (:res my-args)))))
-    (if (not= (:aot my-args) [:all])
-      (abort (str ":aot :all must be specified in project.clj!" (:android-jar my-args)))
-      (do
-        ;;; TODO/FIXME: get the jar name in a more robust way (use the jar task function directly?)
-        (let [jar-path (second (first (leiningen.core.main/apply-task "jar" project [])))
-              tmp-path (.toString (path-from-dirs (:target-path my-args) aar-build-dir))]
-          (debug "The jar is: " jar-path)
-          (debug "The aar compilation will be made in " tmp-path)
-          (check-is-directory! (:res my-args))
-          (check-is-directory! tmp-path true)
-          (run-aapt (:aapt my-args)
-                    tmp-path
-                    (:android-manifest my-args)
-                    (:android-jar my-args)
-                    (:res my-args))
-          (let [aar-location (zip-contents tmp-path
-                                (:android-manifest my-args)
-                                (:res my-args)
-                                jar-path)]
-            
-            (shutdown-agents)
-            (move aar-location (:aar-name my-args))
-            (debug "create-aar executed")))))))
+    (check-arguments my-args)
+    ;;; TODO/FIXME: get the jar name in a more robust way (use the jar task function directly?)
+    (let [jar-path (second (first (leiningen.core.main/apply-task "jar" project [])))
+          tmp-path (.toString (path-from-dirs (:target-path my-args) aar-build-dir))]
+      (debug "The jar is: " jar-path)
+      (debug "The aar compilation will be made in " tmp-path)
+      (check-is-directory! (:res my-args))
+      (check-is-directory! tmp-path true)
+      (run-aapt (:aapt my-args)
+                tmp-path
+                (:android-manifest my-args)
+                (:android-jar my-args)
+                (:res my-args))
+      (let [aar-location (zip-contents tmp-path
+                                       (:android-manifest my-args)
+                                       (:res my-args)
+                                       jar-path)]
+        
+        (shutdown-agents)
+        (move aar-location (:aar-name my-args))
+        (info "Created" (:aar-name my-args))))))
 
 (defn android_development
   "Create a aar file from a jar"
