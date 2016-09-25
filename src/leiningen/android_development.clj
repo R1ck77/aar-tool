@@ -1,10 +1,13 @@
 (ns leiningen.android_development
   (use [leiningen.core.main :only [info abort debug]]
        [clojure.java.shell :only [sh]]
-       [clojure.xml :as xml]))
+       [clojure.xml :as xml]
+       [clojure.java.io :as io]))
 
 (def aar-build-dir "aar")
-
+(def android-manifest-name "AndroidManifest.xml")
+(def expected-jar-name "classes.jar")
+(def r-txt "R.txt")
 
 (defn- get-arguments [project xs]
   "Read the arguments from the project, fail if any is missing"
@@ -43,7 +46,7 @@ Unused… Created because I misread the 'package' argument in the aapt arguments
   "creating a Path in java 7 from clojure is messy"
   (java.nio.file.Paths/get base (into-array String elements)))
 
-(defn- run-aapt [aapt manifest android-jar res compiled-jar destpath]
+(defn- run-aapt [aapt destpath manifest android-jar res]
   "Run the aapt command with the parameters required to generate a R.txt file
 
 This will also generate a R.java file in destpath/src"
@@ -59,38 +62,59 @@ This will also generate a R.java file in destpath/src"
                 "-I" android-jar
                 "-S" res
                 "-J" src-path)]
-      (shutdown-agents)
       (if (not= 0 (:exit res))
         (abort (str "Invocation of aapt failed with error: \"" (:err res) "\""))
         (info "Invocation of aapt successful")))))
+
+(defn- copy-file [source-path dest-path]
+  "Kudos to this guy: https://clojuredocs.org/clojure.java.io/copy"
+  (io/copy (io/file source-path) (io/file dest-path)))
+
+;;;; TODO/FIXME: this is horrible and unportable. Use the java ZipOutputStream!
+(defn- zip-contents [work-path manifest res-dir jar]
+  "Create a .aar library in a temporary location. Returns the path"
+  (let [cpath (.toString (path-from-dirs work-path expected-jar-name))
+        manifest-copy (.toString (path-from-dirs work-path android-manifest-name))
+        aar (.toString (path-from-dirs work-path "library.aar"))]
+   (debug (str "copying the classes jar into \"" cpath "\""))
+   (copy-file jar cpath)
+   (debug (str "copyting the manifest \"" manifest "\" into \"" manifest-copy "\""))
+   (copy-file manifest manifest-copy)
+   (debug "invoking the zip command")
+   (let [zip-args ["zip" "-r" "-9" aar expected-jar-name r-txt res-dir android-manifest-name :dir work-path]
+         res (apply sh zip-args)]
+     (debug (str "zip command invoked with arguments: \"" zip-args "\""))
+     (if (= (:exit res) 0)
+       (do
+         (debug (str "AAR library created as \"" aar "\""))
+         aar)
+       (abort (str "zip failed with error: \"" (:err res) "\" (arguments: \"" zip-args "\""))))))
 
 (defn- create-aar [project arguments]
   (let [my-args (get-arguments project [:android-jar :aapt :aar-name :aot :res :source-paths :target-path :android-manifest])]
     (if (not= (:aot my-args) [:all])
       (abort (str ":aot :all must be specified in project.clj!" (:android-jar my-args)))
       (do
-        ;;; TODO/FIXME: get the plugin in a sander way here (use the jar function directly?)
+        ;;; TODO/FIXME: get the jar name in a more robust way (use the jar task function directly?)
         (let [jar-path (second (first (leiningen.core.main/apply-task "jar" project [])))
               tmp-path (.toString (path-from-dirs (:target-path my-args) aar-build-dir))]
           (debug "The jar is: " jar-path)
           (debug "The aar compilation will be made in " tmp-path)
           (check-is-directory! (:res my-args))
           (check-is-directory! tmp-path true)
-          (run-aapt (:aapt my-args)                    
+          (run-aapt (:aapt my-args)
+                    tmp-path
                     (:android-manifest my-args)
                     (:android-jar my-args)
-                    (:res my-args)
-                    jar-path
-                    tmp-path)
-          (debug "create-aar executed")
-          
-;;;; # zip the aar file
-;;;; echo "zipping the aar content into ${AAR_TEMP_FILE}…"
-;;;; rm ${AAR_TEMP_FILE}
-;;;; zip -r ${AAR_TEMP_FILE} classes.jar R.txt res AndroidManifest.xml
-;;;; mv ${AAR_TEMP_FILE} ${AAR_DESTINATION}
-;;;;           
-          )))))
+                    (:res my-args))
+          (let [aar-location (zip-contents tmp-path
+                                (:android-manifest my-args)
+                                (:res my-args)
+                                jar-path)]
+
+            (shutdown-agents)
+            (debug "create-aar executed")
+            ))))))
 
 (defn android_development
   "Create a aar file from a jar"
