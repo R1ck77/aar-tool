@@ -1,6 +1,7 @@
 (ns couchgames.utils.zip
   (import [java.util.zip ZipOutputStream ZipEntry]
-          [java.io FileOutputStream File]))
+          [java.io FileOutputStream File]
+          [java.nio.file Paths Path]))
 
 (defn open-zip! ^ZipOutputStream [^String path]
   (ZipOutputStream. (FileOutputStream. path)))
@@ -53,3 +54,20 @@ and returns the destination path or nil in case of error."
       (do 
         (println "Error while zipping:" e)  ;; TODO/FIXME: fix this
         nil))))
+
+(defn- relativize ^String [^Path base ^File result]
+  (.toString (.relativize base (.toPath result))))
+
+(defn files-in-dir
+  "Returns a list of files for the directory 'path' suitable for zip-files
+
+If base is specified, the path is removed from the name to store in the zip file"
+  ([path] (files-in-dir path nil))
+  ([path base]
+   (let [path-file (java.io.File. path)
+         raw-results (filter #(not (.isDirectory %)) (file-seq path-file))]
+     
+     (if (nil? base)
+       (map #(strip-first-slash (.toString %)) raw-results)
+       (let [base-path (.toPath (java.io.File. base))]
+         (map #(vector (.toString %) (strip-first-slash (relativize base-path %))) raw-results))))))

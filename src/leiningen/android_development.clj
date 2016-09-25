@@ -3,7 +3,7 @@
        [clojure.java.shell :only [sh]]
        [clojure.xml :as xml]
        [clojure.java.io :as io]
-       [couchgames.utils.zip :as zip]))
+       [couchgames.utils.zip :as czip]))
 
 (def aar-build-dir "aar")
 (def android-manifest-name "AndroidManifest.xml")
@@ -64,30 +64,18 @@ This will also generate a R.java file in destpath/src"
         (abort (str "Invocation of aapt failed with error: \"" (:err res) "\""))
         (info "Invocation of aapt successful")))))
 
-;;;; TODO/FIXME: this is horrible and unportable. Use the java ZipOutputStream!
 (defn- zip-contents [work-path manifest res-dir jar]
   "Create a .aar library in a temporary location. Returns the path"
-  (warn "!!! zipping the contents uses the zip command, which is plain horrible")
-  (let [cpath (.toString (path-from-dirs work-path expected-jar-name))
-        manifest-copy (.toString (path-from-dirs work-path android-manifest-name))
-        aar (.toString (path-from-dirs work-path "library.aar"))]
-   (debug (str "copying the classes jar into \"" cpath "\""))
-   (copy-file jar cpath)
-   (debug (str "copying the manifest \"" manifest "\" into \"" manifest-copy "\""))
-   (copy-file manifest manifest-copy)
-   (debug "invoking the zip command")
-   (let [zip-args1 ["zip" "-9" "-v"  aar expected-jar-name r-txt android-manifest-name :dir work-path]
-         zip-args2 ["zip" "-r" "-9" "-v"  aar "res" :dir (.getParent (java.io.File. res-dir))]
-         res1 (apply sh zip-args1)
-         res2 (apply sh zip-args2)]
-     (debug (str "zip command invoked with arguments: \"" zip-args1 "\" and then \"" zip-args2 "\""))
-     (if (and (= (:exit res1) 0) (= (:exit res2) 0))
-       (do
-         (debug (str "AAR library created as \"" aar "\""))
-         aar)
-       (case res1
-         0 (abort (str "second zip failed with error: \"" (:err res2) "\" (arguments: \"" zip-args2 "\""))
-         (abort (str "first zip failed with error: \"" (:err res1) "\" (arguments: \"" zip-args1 "\"")))))))
+  (let [
+        full-r-path (.toString (path-from-dirs work-path r-txt))
+        aar-file (.toString (path-from-dirs work-path "library.aar"))
+        res-files (files-in-dir res-dir (.getParent (java.io.File. res-dir)))
+        zip-arguments (vec (concat [aar-file [jar expected-jar-name] [full-r-path r-txt] [manifest android-manifest-name]]
+                                   res-files))]
+   (debug "invoking the zip command with arguments:" zip-arguments)
+   (if (nil? (apply czip/zip-files zip-arguments))
+     (abort "Unable to compress" jar full-r-path "and" manifest "into" aar-file)
+     aar-file)))
 
 
 (defn- convert-path-to-absolute [path]
