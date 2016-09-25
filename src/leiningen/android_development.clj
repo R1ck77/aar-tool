@@ -2,7 +2,8 @@
   (use [leiningen.core.main :only [info abort debug warn]]
        [clojure.java.shell :only [sh]]
        [clojure.xml :as xml]
-       [clojure.java.io :as io]))
+       [clojure.java.io :as io]
+       [couchgames.utils.zip :as zip]))
 
 (def aar-build-dir "aar")
 (def android-manifest-name "AndroidManifest.xml")
