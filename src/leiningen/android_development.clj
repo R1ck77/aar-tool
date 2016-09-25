@@ -1,5 +1,5 @@
 (ns leiningen.android_development
-  (use [leiningen.core.main :only [info abort debug]]
+  (use [leiningen.core.main :only [info abort debug warn]]
        [clojure.java.shell :only [sh]]
        [clojure.xml :as xml]
        [clojure.java.io :as io]))
@@ -66,6 +66,7 @@ This will also generate a R.java file in destpath/src"
 ;;;; TODO/FIXME: this is horrible and unportable. Use the java ZipOutputStream!
 (defn- zip-contents [work-path manifest res-dir jar]
   "Create a .aar library in a temporary location. Returns the path"
+  (warn "!!! zipping the contents uses the zip command, which is plain horrible")
   (let [cpath (.toString (path-from-dirs work-path expected-jar-name))
         manifest-copy (.toString (path-from-dirs work-path android-manifest-name))
         aar (.toString (path-from-dirs work-path "library.aar"))]
@@ -74,14 +75,18 @@ This will also generate a R.java file in destpath/src"
    (debug (str "copying the manifest \"" manifest "\" into \"" manifest-copy "\""))
    (copy-file manifest manifest-copy)
    (debug "invoking the zip command")
-   (let [zip-args ["zip" "-r" "-9" aar expected-jar-name r-txt res-dir android-manifest-name :dir work-path]
-         res (apply sh zip-args)]
-     (debug (str "zip command invoked with arguments: \"" zip-args "\""))
-     (if (= (:exit res) 0)
+   (let [zip-args1 ["zip" "-9" "-v"  aar expected-jar-name r-txt android-manifest-name :dir work-path]
+         zip-args2 ["zip" "-r" "-9" "-v"  aar "res" :dir (.getParent (java.io.File. res-dir))]
+         res1 (apply sh zip-args1)
+         res2 (apply sh zip-args2)]
+     (debug (str "zip command invoked with arguments: \"" zip-args1 "\" and then \"" zip-args2 "\""))
+     (if (and (= (:exit res1) 0) (= (:exit res2) 0))
        (do
          (debug (str "AAR library created as \"" aar "\""))
          aar)
-       (abort (str "zip failed with error: \"" (:err res) "\" (arguments: \"" zip-args "\""))))))
+       (case res1
+         0 (abort (str "second zip failed with error: \"" (:err res2) "\" (arguments: \"" zip-args2 "\""))
+         (abort (str "first zip failed with error: \"" (:err res1) "\" (arguments: \"" zip-args1 "\"")))))))
 
 
 (defn- convert-path-to-absolute [path]
@@ -96,10 +101,18 @@ This will also generate a R.java file in destpath/src"
           {}
           m))
 
+(defn- move [source destination]
+  (debug "Moving" source "to" destination)
+  (try
+    (.delete (java.io.File. destination))
+    (catch Exception e (abort "Unable to remove the destination file" destination "to make space for the resulting aar")))
+   (.renameTo (java.io.File. source) (java.io.File. destination)))
+
 (defn- create-aar [project arguments]
   (let [my-args (absolutize-paths
                  (get-arguments project [:android-jar :aapt :aar-name :aot :res :source-paths :target-path :android-manifest])
                  #{:android-jar :aapt :aar-name :res :target-path :android-manifest})]
+    (assert (= "res" (.getName (java.io.File. (:res my-args)))))
     (if (not= (:aot my-args) [:all])
       (abort (str ":aot :all must be specified in project.clj!" (:android-jar my-args)))
       (do
@@ -119,10 +132,10 @@ This will also generate a R.java file in destpath/src"
                                 (:android-manifest my-args)
                                 (:res my-args)
                                 jar-path)]
-
+            
             (shutdown-agents)
-            (debug "create-aar executed")
-            ))))))
+            (move aar-location (:aar-name my-args))
+            (debug "create-aar executed")))))))
 
 (defn android_development
   "Create a aar file from a jar"
