@@ -106,7 +106,9 @@ This will also generate a R.java file in destpath/src"
     (if (not (.exists (java.io.File. manifest))) (abort (str "The file \"" manifest "\" does not exist")))
     (if (not= (:aot params) [:all]) (abort (str ":aot :all must be specified in project.clj!" (:android-jar params))))))
 
-(defn- create-aar [project arguments]
+(defn create-aar 
+  "Create a AAR library suitable for Android integration"
+  [project arguments]
   (let [my-args (absolutize-paths
                  (get-arguments project [:android-jar :aapt :aar-name :aot :res :source-paths :target-path :android-manifest])
                  #{:android-jar :aapt :aar-name :res :target-path :android-manifest})]
@@ -132,10 +134,17 @@ This will also generate a R.java file in destpath/src"
         (move aar-location (:aar-name my-args))
         (info "Created" (:aar-name my-args))))))
 
+(defn watch-res 
+  "Update the contents of the R.java file when a :res file changes"
+  [project & args]
+  (println "Args:    " (:res project)))
+
 (defn android_development
-  "Create a aar file from a jar"
+  "Functions for android development"
+  {:subtasks [#'create-aar #'watch-res]}
   [project & args]
   (case (first args) 
     nil (info "An action must be provided")
     "aar" (create-aar project (rest args))
+    "watch-res" (watch-res project (rest args))
     (abort "Unknown option")))
