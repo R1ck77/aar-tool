@@ -136,7 +136,7 @@ This will also generate a R.java file in destpath/src"
         (move aar-location (:aar-name my-args))
         (info "Created" (:aar-name my-args))))))
 
-(defn- watch-test [dir]
+(defn- watch-res-directory [dir]
   (watch/add (clojure.java.io/file dir)
              :my-watch
              (fn [obj key prev next]
@@ -146,13 +146,23 @@ This will also generate a R.java file in destpath/src"
               :types #{:create :modify :delete}
               }))
 
-(defn- background-watch-test [dir]
-  (.start (Thread. #(do (println "Background thread started!") (watch-test dir) (Thread/sleep 100000) ))))
+(defn- watches-for-file? [file]
+  (> (count (watch/list file)) 0))
+
+(defn- blocking-watch [dir]
+  (watch-res-directory dir)
+  (loop [f (clojure.java.io/file dir)]    
+    (if (watches-for-file? f)
+      (do
+        (Thread/sleep 100)
+        (recur f)))))
+
 
 (defn watch-res 
   "Update the contents of the R.java file when a :res file changes"
   [project & args]
-  (background-watch-test (:res project)))
+  (info "Starting a watch on the res directory…")
+  (blocking-watch (:res project)))
 
 
 (defn android_development
@@ -161,6 +171,6 @@ This will also generate a R.java file in destpath/src"
   [project & args]
   (case (first args) 
     nil (info "An action must be provided")
-    "aar" (create-aar project (rest args))
+    "create-aar" (create-aar project (rest args))
     "watch-res" (watch-res project (rest args))
     (abort "Unknown option")))
