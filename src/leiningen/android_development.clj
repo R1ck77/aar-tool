@@ -146,10 +146,14 @@ This will also generate a R.java file in destpath/src"
               :types #{:create :modify :delete}
               }))
 
+(defn- background-watch-test [dir]
+  (.start (Thread. #(do (println "Background thread started!") (watch-test dir) (Thread/sleep 100000) ))))
+
 (defn watch-res 
   "Update the contents of the R.java file when a :res file changes"
   [project & args]
-  (watch-test (:res project)))
+  (background-watch-test (:res project)))
+
 
 (defn android_development
   "Functions for android development"
