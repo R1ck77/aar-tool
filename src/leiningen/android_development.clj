@@ -1,9 +1,11 @@
 (ns leiningen.android_development
-  (use [leiningen.core.main :only [info abort debug warn]]
-       [clojure.java.shell :only [sh]]
-       [clojure.xml :as xml]
-       [clojure.java.io :as io]
-       [couchgames.utils.zip :as czip]))
+  (:use [leiningen.core.main :only [info abort debug warn]]
+        [clojure.java.shell :only [sh]]
+        [clojure.xml :as xml]
+        [clojure.java.io :as io]
+        [couchgames.utils.zip :as czip])
+  (:require [hara.io.watch]
+            [hara.common.watch :as watch]))
 
 (def aar-build-dir "aar")
 (def android-manifest-name "AndroidManifest.xml")
