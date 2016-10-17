@@ -136,10 +136,20 @@ This will also generate a R.java file in destpath/src"
         (move aar-location (:aar-name my-args))
         (info "Created" (:aar-name my-args))))))
 
+(defn- watch-test [dir]
+  (watch/add (clojure.java.io/file dir)
+             :my-watch
+             (fn [obj key prev next]
+               (println "Something happened! " obj key prev next))
+             
+             {
+              :types #{:create :modify :delete}
+              }))
+
 (defn watch-res 
   "Update the contents of the R.java file when a :res file changes"
   [project & args]
-  (println "Args:    " (:res project)))
+  (watch-test (:res project)))
 
 (defn android_development
   "Functions for android development"
