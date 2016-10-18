@@ -55,7 +55,6 @@ This will also generate a R.java file in destpath/src"
     (let [res (sh aapt
                 "package"
                 "--output-text-symbols" destpath
-                "-v"
                 "-f"
                 "-m"
                 "-M" manifest
@@ -137,6 +136,7 @@ This will also generate a R.java file in destpath/src"
         (info "Created" (:aar-name my-args))))))
 
 (defn- watch-res-directory [dir]
+  "Update the contents of the R.java file when a :res file changes"
   (watch/add (clojure.java.io/file dir)
              :my-watch
              (fn [obj key prev next]
@@ -147,9 +147,13 @@ This will also generate a R.java file in destpath/src"
               }))
 
 (defn- watches-for-file? [file]
+  "Returns true if the watch listener disappeared
+
+This can actually happen only if the watch sort of stops itself"
   (> (count (watch/list file)) 0))
 
 (defn- blocking-watch [dir]
+  "Starts a watch on the specific directory, and blocks"
   (watch-res-directory dir)
   (loop [f (clojure.java.io/file dir)]    
     (if (watches-for-file? f)
@@ -158,8 +162,8 @@ This will also generate a R.java file in destpath/src"
         (recur f)))))
 
 
-(defn watch-res 
-  "Update the contents of the R.java file when a :res file changes"
+(defn watch-res
+  "Watch the res directory and update the R.java if any file changes"
   [project & args]
   (info "Starting a watch on the res directory…")
   (blocking-watch (:res project)))
