@@ -76,8 +76,7 @@ This will also generate a R.java file in destpath/src"
                                "-S" res
                                "-J" src-path))
           res (apply sh sh-arguments)]
-      (if (not= 0 (:exit res))
-        (abort (str "Invocation of aapt failed with error: \"" (:err res) "\""))))))
+      res)))
 
 (defn- zip-contents [work-path manifest res-dir jar]
   "Create a .aar library in a temporary location. Returns the path"
@@ -122,6 +121,11 @@ This will also generate a R.java file in destpath/src"
     (if (not (.exists (java.io.File. manifest))) (abort (str "The file \"" manifest "\" does not exist")))
     (if (not= (:aot params) [:all]) (abort (str ":aot :all must be specified in project.clj!" (:android-jar params))))))
 
+(defn- run-aapt-noisy [& args]
+  (let [res (apply run-aapt args)]
+    (if (not= 0 (:exit res))
+        (abort (str "Invocation of aapt failed with error: \"" (:err res) "\"")))))
+
 (defn create-aar 
   "Create a AAR library suitable for Android integration"
   [project arguments]
@@ -136,11 +140,12 @@ This will also generate a R.java file in destpath/src"
       (debug "The aar compilation will be made in " tmp-path)
       (check-is-directory! (:res my-args))
       (check-is-directory! tmp-path true)
-      (run-aapt (:aapt my-args)
-                tmp-path
-                (:android-manifest my-args)
-                (:android-jar my-args)
-                (:res my-args))
+      (run-aapt-noisy (:aapt my-args)
+                            tmp-path
+                            (:android-manifest my-args)
+                            (:android-jar my-args)
+                            (:res my-args))
+      
       (let [aar-location (zip-contents tmp-path
                                        (:android-manifest my-args)
                                        (:res my-args)
@@ -149,6 +154,14 @@ This will also generate a R.java file in destpath/src"
         (shutdown-agents)
         (move aar-location (:aar-name my-args))
         (info "Created" (:aar-name my-args))))))
+
+(defn- generate-R-java [aapt manifest android-jar res]
+  (let [result (run-aapt aapt nil manifest android-jar res)]
+    (print (case (:exit result)
+               0 "✓ R.java updated!\n"
+               (str "❌ error with R.java generatino: " ( :err result))))
+    (flush)
+    result))
 
 (defn- watch-res-directory [project]
   "Update the contents of the R.java file when a :res file changes"
@@ -166,15 +179,13 @@ This will also generate a R.java file in destpath/src"
                           (reduce (fn [acc value] (or acc (re-matches value path)))
                                   false
                                   non-res-files))]
-    (run-aapt aapt nil manifest android-jar res)
+    (generate-R-java aapt manifest android-jar res)
     (watch/add (clojure.java.io/file dir)
                :my-watch
                (fn [obj key prev next]                       
                  (let [path (.toString (second next))]                         
                    (if (not (to-be-excluded? path))
-                     (println "Running res due to" (first next) "of" (.toString (second next)))
-                     (let  [res (run-aapt aapt "/tmp" manifest android-jar res)]
-                       (println (case res nil "✓" "❌"))))))                     
+                     (generate-R-java aapt manifest android-jar res))))
                {
                 :types #{:create :modify :delete}})))
 
