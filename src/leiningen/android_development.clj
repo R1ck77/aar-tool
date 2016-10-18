@@ -11,6 +11,7 @@
 (def android-manifest-name "AndroidManifest.xml")
 (def expected-jar-name "classes.jar")
 (def r-txt "R.txt")
+(def non-res-files [#".*[.]swp$" #".*~"])
 
 (defn- get-arguments [project xs]
   "Read the arguments from the project, fail if any is missing"
@@ -50,17 +51,31 @@ If create-if-missing is set to true, the function will try to fix that, no solut
   "Run the aapt command with the parameters required to generate a R.txt file
 
 This will also generate a R.java file in destpath/src"
-  (let [src-path (.toString (path-from-dirs destpath "src"))]
+  (let [src-path (if (nil? destpath)
+                   "src"
+                   (.toString (path-from-dirs destpath "src")))]
+    
     (check-is-directory! src-path true)
-    (let [res (sh aapt
-                "package"
-                "--output-text-symbols" destpath
-                "-f"
-                "-m"
-                "-M" manifest
-                "-I" android-jar
-                "-S" res
-                "-J" src-path)]
+    
+    (let [sh-arguments (if (nil? destpath)
+                         (list aapt
+                               "package"
+                               "-f"
+                               "-m"
+                               "-M" manifest
+                               "-I" android-jar
+                               "-S" res
+                               "-J" src-path)
+                         (list aapt
+                               "package"
+                               "--output-text-symbols" destpath
+                               "-f"
+                               "-m"
+                               "-M" manifest
+                               "-I" android-jar
+                               "-S" res
+                               "-J" src-path))
+          res (apply sh sh-arguments)]
       (if (not= 0 (:exit res))
         (abort (str "Invocation of aapt failed with error: \"" (:err res) "\""))))))
 
@@ -146,18 +161,22 @@ This will also generate a R.java file in destpath/src"
         manifest (:android-manifest my-args)
         android-jar (:android-jar my-args)
         res (:res my-args)
-        dir (:res my-args)]
-    (run-aapt aapt "/tmp" manifest android-jar res)
+        dir (:res my-args)
+        to-be-excluded? (fn [path]
+                          (reduce (fn [acc value] (or acc (re-matches value path)))
+                                  false
+                                  non-res-files))]
+    (run-aapt aapt nil manifest android-jar res)
     (watch/add (clojure.java.io/file dir)
-                     :my-watch
-                     (fn [obj key prev next]               
-                       (let  [res (run-aapt aapt "/tmp" manifest android-jar res)]
-                         (println res)
-                         ))
-             
-                     {
-                      :types #{:create :modify :delete}
-                      })))
+               :my-watch
+               (fn [obj key prev next]                       
+                 (let [path (.toString (second next))]                         
+                   (if (not (to-be-excluded? path))
+                     (println "Running res due to" (first next) "of" (.toString (second next)))
+                     (let  [res (run-aapt aapt "/tmp" manifest android-jar res)]
+                       (println (case res nil "✓" "❌"))))))                     
+               {
+                :types #{:create :modify :delete}})))
 
 (defn- watches-for-file? [file]
   "Returns true if the watch listener disappeared
