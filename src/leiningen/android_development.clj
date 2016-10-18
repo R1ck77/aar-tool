@@ -47,6 +47,8 @@ If create-if-missing is set to true, the function will try to fix that, no solut
   "Kudos to this guy: https://clojuredocs.org/clojure.java.io/copy"
   (io/copy (io/file source-path) (io/file dest-path)))
 
+;;;; TODO/FIXME: The "src" string is completely bogus and will break
+;;;; watch-res if we specify a different source dir in leinigen
 (defn- run-aapt [aapt destpath manifest android-jar res]
   "Run the aapt command with the parameters required to generate a R.txt file
 
@@ -208,13 +210,17 @@ This can actually happen only if the watch sort of stops itself"
           (recur f))))))
 
 (defn watch-res
-  "Watch the res directory and update the R.java if any file changes"
+  "Watch the res directory and update the R.java if any file changes
+
+  The updates are applied directly into the src directory"
   [project & args]
   (info "Starting a watch on the res directory…")
   (blocking-watch project))
 
 (defn create-R
-  "Create a R.java file with the information in the res directory"
+  "Create a R.java file with the information in the res directory
+  
+  The file is created in the src directory"
   [project & args]
   (let [args (absolutize-paths
               (get-arguments project
