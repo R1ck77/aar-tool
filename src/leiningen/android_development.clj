@@ -155,11 +155,14 @@ This will also generate a R.java file in destpath/src"
         (move aar-location (:aar-name my-args))
         (info "Created" (:aar-name my-args))))))
 
+(defn- clear-trailing [char string]
+  (apply str (reverse (drop-while (hash-set char) (reverse string)))))
+
 (defn- generate-R-java [aapt manifest android-jar res]
   (let [result (run-aapt aapt nil manifest android-jar res)]
-    (print (case (:exit result)
-               0 "✓ R.java updated!\n"
-               (str "❌ error with R.java generatino: " ( :err result))))
+    (info (case (:exit result)
+               0 "✓ R.java updated"
+               (clear-trailing \newline (str "❌ error with R.java generatino: " ( :err result)))))
     (flush)
     result))
 
