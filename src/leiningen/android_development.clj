@@ -135,16 +135,29 @@ This will also generate a R.java file in destpath/src"
         (move aar-location (:aar-name my-args))
         (info "Created" (:aar-name my-args))))))
 
-(defn- watch-res-directory [dir]
+(defn- watch-res-directory [project]
   "Update the contents of the R.java file when a :res file changes"
-  (watch/add (clojure.java.io/file dir)
-             :my-watch
-             (fn [obj key prev next]
-               (println "Something happened! " obj key prev next))
+  
+  (let [my-args (absolutize-paths
+                 (get-arguments project
+                                [:android-jar :aapt :res :source-paths :target-path :android-manifest])
+                 #{:android-jar :aapt :res :target-path :android-manifest})
+        aapt (:aapt my-args)
+        manifest (:android-manifest my-args)
+        android-jar (:android-jar my-args)
+        res (:res my-args)
+        dir (:res my-args)]
+    (run-aapt aapt "/tmp" manifest android-jar res)
+    (watch/add (clojure.java.io/file dir)
+                     :my-watch
+                     (fn [obj key prev next]               
+                       (let  [res (run-aapt aapt "/tmp" manifest android-jar res)]
+                         (println res)
+                         ))
              
-             {
-              :types #{:create :modify :delete}
-              }))
+                     {
+                      :types #{:create :modify :delete}
+                      })))
 
 (defn- watches-for-file? [file]
   "Returns true if the watch listener disappeared
@@ -152,10 +165,11 @@ This will also generate a R.java file in destpath/src"
 This can actually happen only if the watch sort of stops itself"
   (> (count (watch/list file)) 0))
 
-(defn- blocking-watch [dir]
+;;;; TODO/FIXME: unpack the arguments here!
+(defn- blocking-watch [project]
   "Starts a watch on the specific directory, and blocks"
-  (watch-res-directory dir)
-  (loop [f (clojure.java.io/file dir)]    
+  (watch-res-directory project)
+  (loop [f (clojure.java.io/file (:res project))]    
     (if (watches-for-file? f)
       (do
         (Thread/sleep 100)
@@ -166,7 +180,7 @@ This can actually happen only if the watch sort of stops itself"
   "Watch the res directory and update the R.java if any file changes"
   [project & args]
   (info "Starting a watch on the res directory…")
-  (blocking-watch (:res project)))
+  (blocking-watch project))
 
 
 (defn android_development
