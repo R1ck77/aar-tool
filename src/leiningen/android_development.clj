@@ -210,13 +210,28 @@ This can actually happen only if the watch sort of stops itself"
   (info "Starting a watch on the res directory…")
   (blocking-watch project))
 
+(defn create-R
+  "Create a R.java file with the information in the res directory"
+  [project & args]
+  (let [args (absolutize-paths
+              (get-arguments project
+                             [:android-jar :aapt :res :source-paths :target-path :android-manifest])
+              #{:android-jar :aapt :res :target-path :android-manifest})
+        aapt (:aapt args)
+        manifest (:android-manifest args)
+        android-jar (:android-jar args)
+        res (:res args)
+        dir (:res args)]
+    (generate-R-java aapt manifest android-jar res)))
+
 
 (defn android_development
   "Functions for android development"
-  {:subtasks [#'create-aar #'watch-res]}
+  {:subtasks [#'create-aar #'watch-res #'create-R]}
   [project & args]
   (case (first args) 
     nil (info "An action must be provided")
     "create-aar" (create-aar project (rest args))
     "watch-res" (watch-res project (rest args))
+    "create-R" (create-R project (rest args))
     (abort "Unknown option")))
