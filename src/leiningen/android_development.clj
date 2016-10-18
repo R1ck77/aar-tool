@@ -163,14 +163,10 @@ This will also generate a R.java file in destpath/src"
     (flush)
     result))
 
-(defn- watch-res-directory [project]
+(defn- watch-res-directory [my-args]
   "Update the contents of the R.java file when a :res file changes"
   
-  (let [my-args (absolutize-paths
-                 (get-arguments project
-                                [:android-jar :aapt :res :source-paths :target-path :android-manifest])
-                 #{:android-jar :aapt :res :target-path :android-manifest})
-        aapt (:aapt my-args)
+  (let [aapt (:aapt my-args)
         manifest (:android-manifest my-args)
         android-jar (:android-jar my-args)
         res (:res my-args)
@@ -195,16 +191,18 @@ This will also generate a R.java file in destpath/src"
 This can actually happen only if the watch sort of stops itself"
   (> (count (watch/list file)) 0))
 
-;;;; TODO/FIXME: unpack the arguments here!
 (defn- blocking-watch [project]
   "Starts a watch on the specific directory, and blocks"
-  (watch-res-directory project)
-  (loop [f (clojure.java.io/file (:res project))]    
-    (if (watches-for-file? f)
-      (do
-        (Thread/sleep 100)
-        (recur f)))))
-
+  (let [args (absolutize-paths
+              (get-arguments project
+                             [:android-jar :aapt :res :source-paths :target-path :android-manifest])
+              #{:android-jar :aapt :res :target-path :android-manifest})]
+    (watch-res-directory args)
+    (loop [f (clojure.java.io/file (:res project))]    
+      (if (watches-for-file? f)
+        (do
+          (Thread/sleep 100)
+          (recur f))))))
 
 (defn watch-res
   "Watch the res directory and update the R.java if any file changes"
