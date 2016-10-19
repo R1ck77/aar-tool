@@ -22,6 +22,15 @@
            true
            childs)))
 
+(defn- get-android-jar-location [sdk version]
+  "Return the path of the android.jar for a specific android version
+
+Throw a runtime exception if not found or not readable"
+  (let [jar (io/file (apply str (interpose java.io.File/separator [sdk "platforms" (str "android-" version) "android.jar"])))]
+    (if (and (.exists jar) (.canRead jar))
+      (.getAbsolutePath jar)
+      (throw (RuntimeException. (str "\"" (.getAbsolutePath jar) "\" doesn't exist, or is not readable"))))))
+
 (defn- get-aapt-location [sdk version]
   "Return the path of aapt for a specific version of the build tools in the sdk
 
