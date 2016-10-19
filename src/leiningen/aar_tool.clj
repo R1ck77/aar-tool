@@ -1,4 +1,4 @@
-(ns leiningen.android_development
+(ns leiningen.aar-tool
   (:use [leiningen.core.main :only [info abort debug warn]]
         [clojure.java.shell :only [sh]]
         [clojure.xml :as xml]
@@ -234,7 +234,7 @@ This can actually happen only if the watch sort of stops itself"
     (generate-R-java aapt manifest android-jar res)))
 
 
-(defn android_development
+(defn aar-tool
   "Functions for android development"
   {:subtasks [#'create-aar #'watch-res #'create-R]}
   [project & args]
