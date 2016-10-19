@@ -22,6 +22,15 @@
            true
            childs)))
 
+(defn- get-aapt-location [sdk version]
+  "Return the path of aapt for a specific version of the build tools in the sdk
+
+Throw a runtime exception if not found or not executable"
+  (let [aapt (io/file (apply str (interpose java.io.File/separator [sdk "build-tools" version "aapt"])))]
+    (if (and (.exists aapt) (.canExecute aapt))
+      (.getAbsolutePath aapt)
+      (throw (RuntimeException. (str "\"" (.getAbsolutePath aapt) "\" doesn't exist, or is not an executable"))))))
+
 (defn- get-sdk-location []
   "Locate the android sdk from the informations at hand.
 
