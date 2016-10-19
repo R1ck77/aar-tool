@@ -13,6 +13,26 @@
 (def r-txt "R.txt")
 (def non-res-files [#".*[.]swp$" #".*~"])
 
+(defn- all-directories? [base & childs]
+  "Returns true if and only if both base and all its childs are directories"
+  (and
+   (.isDirectory (io/file base))
+   (reduce (fn [acc value]
+             (and acc (.isDirectory (io/file base value))))
+           true
+           childs)))
+
+(defn- get-sdk-location []
+  "Locate the android sdk from the informations at hand.
+
+Uses the ANDROID_HOME env. variable only, at the moment.
+
+Throw a RuntimeException if none can be found"
+  (let [home (System/getenv "ANDROID_HOME")]
+    (if (all-directories? home "build-tools" "platforms" "tools")
+      home
+      (throw (RuntimeException. "Unable to find the android sdk (is ANDROID_HOME correctly set?)")))))
+
 (defn- get-arguments [project xs]
   "Read the arguments from the project, fail if any is missing"
   (debug "Ensuring that the project arguments are there")
