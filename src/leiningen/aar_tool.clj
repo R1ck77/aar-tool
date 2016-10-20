@@ -13,6 +13,18 @@
 (def r-txt "R.txt")
 (def non-res-files [#".*[.]swp$" #".*~"])
 
+
+
+(defn- get-api-level [manifest-path]
+  "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
+  (let [attrs (:attrs
+         (first
+          (filter #(= (:tag %) :uses-sdk) (:content (xml/parse manifest-path)))))]
+    (Integer/valueOf (or (:android:maxSdkVersion attrs)
+                          (:android:targetSdkVersion attrs)
+                          (:android:minSdkVersion attrs)
+                          "1"))))
+
 (defn- all-directories? [base & childs]
   "Returns true if and only if both base and all its childs are directories"
   (and
