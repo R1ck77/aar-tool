@@ -117,6 +117,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
   "Run the aapt command with the parameters required to generate a R.txt file
 
 This will also generate a R.java file in destpath/src"
+  (warn "!!!! Using hardcoded 'src' directory as destination. Bad, bad coder!")
   (let [src-path (if (nil? destpath)
                    "src"
                    (.toString (path-from-dirs destpath "src")))]
