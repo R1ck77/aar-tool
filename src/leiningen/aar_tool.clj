@@ -13,8 +13,6 @@
 (def r-txt "R.txt")
 (def non-res-files [#".*[.]swp$" #".*~"])
 
-
-
 (defn- get-api-level [manifest-path]
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
   (let [attrs (:attrs
@@ -62,6 +60,10 @@ Throw a RuntimeException if none can be found"
     (if (all-directories? home "build-tools" "platforms" "tools")
       home
       (throw (RuntimeException. "Unable to find the android sdk (is ANDROID_HOME correctly set?)")))))
+
+(defn- android-jar-from-manifest [manifest-path]
+  "Return the path of android.jar from the android manifest and the environment"
+  (get-android-jar-location  (get-sdk-location) (get-api-level manifest-path)))
 
 (defn- get-arguments [project xs]
   "Read the arguments from the project, fail if any is missing"
@@ -167,11 +169,10 @@ This will also generate a R.java file in destpath/src"
   (let [manifest (:android-manifest params)
         aapt-file (java.io.File. (:aapt params))]
     (if (not (.canExecute aapt-file)) (abort (str (.toString aapt-file) " is not a valid executable")))
-    (if (not (.exists (java.io.File. (:android-jar params)))) (abort (str (:android-jar params) " is not a valid file")))
     (if (not= "res" (.getName (java.io.File. (:res params)))) (abort "The :res option must point to a directory named \"res\""))
     (if (not= android-manifest-name (.getName (java.io.File. manifest))) (abort "The :res option must point to a directory named \"" android-manifest-name "\""))
     (if (not (.exists (java.io.File. manifest))) (abort (str "The file \"" manifest "\" does not exist")))
-    (if (not= (:aot params) [:all]) (abort (str ":aot :all must be specified in project.clj!" (:android-jar params))))))
+    (if (not= (:aot params) [:all]) (abort (str ":aot :all must be specified in project.clj!")))))
 
 (defn- run-aapt-noisy [& args]
   (let [res (apply run-aapt args)]
@@ -182,8 +183,8 @@ This will also generate a R.java file in destpath/src"
   "Create a AAR library suitable for Android integration"
   [project arguments]
   (let [my-args (absolutize-paths
-                 (get-arguments project [:android-jar :aapt :aar-name :aot :res :source-paths :target-path :android-manifest])
-                 #{:android-jar :aapt :aar-name :res :target-path :android-manifest})]
+                 (get-arguments project [:aapt :aar-name :aot :res :source-paths :target-path :android-manifest])
+                 #{:aapt :aar-name :res :target-path :android-manifest})]
     (check-arguments my-args)
     ;;; TODO/FIXME: get the jar name in a more robust way (use the jar task function directly?)
     (let [jar-path (second (first (leiningen.core.main/apply-task "jar" project [])))
@@ -195,7 +196,7 @@ This will also generate a R.java file in destpath/src"
       (run-aapt-noisy (:aapt my-args)
                             tmp-path
                             (:android-manifest my-args)
-                            (:android-jar my-args)
+                            (android-jar-from-manifest (:android-manifest my-args))
                             (:res my-args))
       
       (let [aar-location (zip-contents tmp-path
@@ -223,7 +224,7 @@ This will also generate a R.java file in destpath/src"
   
   (let [aapt (:aapt my-args)
         manifest (:android-manifest my-args)
-        android-jar (:android-jar my-args)
+        android-jar (android-jar-from-manifest (:android-manifest my-args))
         res (:res my-args)
         dir (:res my-args)
         to-be-excluded? (fn [path]
@@ -250,8 +251,8 @@ This can actually happen only if the watch sort of stops itself"
   "Starts a watch on the specific directory, and blocks"
   (let [args (absolutize-paths
               (get-arguments project
-                             [:android-jar :aapt :res :source-paths :target-path :android-manifest])
-              #{:android-jar :aapt :res :target-path :android-manifest})]
+                             [:aapt :res :source-paths :target-path :android-manifest])
+              #{:aapt :res :target-path :android-manifest})]
     (watch-res-directory args)
     (loop [f (clojure.java.io/file (:res project))]    
       (if (watches-for-file? f)
@@ -274,11 +275,11 @@ This can actually happen only if the watch sort of stops itself"
   [project & args]
   (let [args (absolutize-paths
               (get-arguments project
-                             [:android-jar :aapt :res :source-paths :target-path :android-manifest])
-              #{:android-jar :aapt :res :target-path :android-manifest})
+                             [:aapt :res :source-paths :target-path :android-manifest])
+              #{:aapt :res :target-path :android-manifest})
         aapt (:aapt args)
         manifest (:android-manifest args)
-        android-jar (:android-jar args)
+        android-jar (android-jar-from-manifest manifest)
         res (:res args)
         dir (:res args)]
     (generate-R-java aapt manifest android-jar res)))
