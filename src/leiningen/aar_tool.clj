@@ -41,14 +41,9 @@ Throw a runtime exception if not found or not readable"
       (.getAbsolutePath jar)
       (throw (RuntimeException. (str "\"" (.getAbsolutePath jar) "\" doesn't exist, or is not readable"))))))
 
-(defn- get-aapt-location [sdk version]
-  "Return the path of aapt for a specific version of the build tools in the sdk
-
-Throw a runtime exception if not found or not executable"
-  (let [aapt (io/file (apply str (interpose java.io.File/separator [sdk "build-tools" version "aapt"])))]
-    (if (and (.exists aapt) (.canExecute aapt))
-      (.getAbsolutePath aapt)
-      (throw (RuntimeException. (str "\"" (.getAbsolutePath aapt) "\" doesn't exist, or is not an executable"))))))
+(defn- get-all-build-tools [sdk]
+  "Return a sequence of all build-tools versions available"
+   (seq (.list (io/file sdk "build-tools"))))
 
 (defn- get-sdk-location []
   "Locate the android sdk from the informations at hand.
@@ -60,6 +55,23 @@ Throw a RuntimeException if none can be found"
     (if (all-directories? home "build-tools" "platforms" "tools")
       home
       (throw (RuntimeException. "Unable to find the android sdk (is ANDROID_HOME correctly set?)")))))
+
+(defn- get-aapt-location
+  "Return the path of aapt for a specific version of the build tools in the sdk
+
+The 0-arity version uses the sdk found with 'get-sdk-location' and the
+ highest build tool found with 'get-all-build-tools'.
+
+  Throw a runtime exception if not found or not executable"
+  ([]
+   (let [sdk (get-sdk-location)]
+    (get-aapt-location sdk
+                       (last (sort (get-all-build-tools sdk))))))
+  ([sdk version]
+   (let [aapt (io/file (apply str (interpose java.io.File/separator [sdk "build-tools" version "aapt"])))]
+     (if (and (.exists aapt) (.canExecute aapt))
+       (.getAbsolutePath aapt)
+       (throw (RuntimeException. (str "\"" (.getAbsolutePath aapt) "\" doesn't exist, or is not an executable")))))))
 
 (defn- android-jar-from-manifest [manifest-path]
   "Return the path of android.jar from the android manifest and the environment"
@@ -166,9 +178,7 @@ This will also generate a R.java file in destpath/src"
   (.renameTo (java.io.File. source) (java.io.File. destination)))
 
 (defn- check-arguments [params]
-  (let [manifest (:android-manifest params)
-        aapt-file (java.io.File. (:aapt params))]
-    (if (not (.canExecute aapt-file)) (abort (str (.toString aapt-file) " is not a valid executable")))
+  (let [manifest (:android-manifest params)]
     (if (not= "res" (.getName (java.io.File. (:res params)))) (abort "The :res option must point to a directory named \"res\""))
     (if (not= android-manifest-name (.getName (java.io.File. manifest))) (abort "The :res option must point to a directory named \"" android-manifest-name "\""))
     (if (not (.exists (java.io.File. manifest))) (abort (str "The file \"" manifest "\" does not exist")))
