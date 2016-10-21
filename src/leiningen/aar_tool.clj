@@ -146,12 +146,21 @@ This will also generate a R.java file in destpath/src"
                 (apply sh sh-arguments))]
       res)))
 
+(defn- filter-temp [xs]
+  "Remove from the list of paths/pairs the files ending with ~"
+  (filter
+   (fn [v]
+     (not (re-matches #".*~$" (if (string? v)
+                                v
+                                (first v)))))
+   xs))
+
 (defn- zip-contents [work-path manifest res-dir jar]
   "Create a .aar library in a temporary location. Returns the path"
   (let [
         full-r-path (.toString (path-from-dirs work-path r-txt))
         aar-file (.toString (path-from-dirs work-path "library.aar"))
-        res-files (files-in-dir res-dir (.getParent (java.io.File. res-dir)))
+        res-files (filter-temp (files-in-dir res-dir (.getParent (java.io.File. res-dir))))
         zip-arguments (vec (concat [aar-file [jar expected-jar-name] [full-r-path r-txt] [manifest android-manifest-name]]
                                    res-files))]
    (debug "invoking the zip command with arguments:" zip-arguments)
