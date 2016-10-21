@@ -141,7 +141,9 @@ This will also generate a R.java file in destpath/src"
                                "-I" android-jar
                                "-S" res
                                "-J" src-path))
-          res (apply sh sh-arguments)]
+          res (do
+                (debug "About to run aapt with arguments: " sh-arguments)
+                (apply sh sh-arguments))]
       res)))
 
 (defn- zip-contents [work-path manifest res-dir jar]
