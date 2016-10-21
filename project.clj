@@ -1,4 +1,4 @@
-(defproject aar-tool "0.2.0"
+(defproject aar-tool "0.2.1"
   :description "Useful tasks for Android .aar libraries development"
   :license {:name "Proprietary license (temporary)"}
   :eval-in-leiningen true
