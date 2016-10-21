@@ -113,18 +113,17 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 
 ;;;; TODO/FIXME: The "src" string is completely bogus and will break
 ;;;; watch-res if we specify a different source dir in leinigen
-(defn- run-aapt [aapt destpath manifest android-jar res]
+(defn- run-aapt [aapt destpath sympath manifest android-jar res]
   "Run the aapt command with the parameters required to generate a R.txt file
 
 This will also generate a R.java file in destpath/src"
-  (warn "!!!! Using hardcoded 'src' directory as destination. Bad, bad coder!")
   (let [src-path (if (nil? destpath)
-                   "src"
-                   (.toString (path-from-dirs destpath "src")))]
+                   (do (warn "Using hard-coded src-java as R.java path") "src-java")
+                   destpath)]
     
     (check-is-directory! src-path true)
     
-    (let [sh-arguments (if (nil? destpath)
+    (let [sh-arguments (if (nil? sympath)
                          (list aapt
                                "package"
                                "-f"
@@ -135,7 +134,7 @@ This will also generate a R.java file in destpath/src"
                                "-J" src-path)
                          (list aapt
                                "package"
-                               "--output-text-symbols" destpath
+                               "--output-text-symbols" sympath
                                "-f"
                                "-m"
                                "-M" manifest
@@ -199,12 +198,14 @@ This will also generate a R.java file in destpath/src"
     (check-arguments my-args)
     ;;; TODO/FIXME: get the jar name in a more robust way (use the jar task function directly?)
     (let [jar-path (second (first (leiningen.core.main/apply-task "jar" project [])))
-          tmp-path (.toString (path-from-dirs (:target-path my-args) aar-build-dir))]
+          tmp-path (.toString (path-from-dirs (:target-path my-args) aar-build-dir))
+          dest-path (.toString (path-from-dirs tmp-path "src"))]
       (debug "The jar is: " jar-path)
       (debug "The aar compilation will be made in " tmp-path)
       (check-is-directory! (:res my-args))
       (check-is-directory! tmp-path true)
       (run-aapt-noisy (get-aapt-location)
+                      dest-path
                       tmp-path
                       (:android-manifest my-args)
                       (android-jar-from-manifest (:android-manifest my-args))
@@ -222,11 +223,11 @@ This will also generate a R.java file in destpath/src"
 (defn- clear-trailing [char string]
   (apply str (reverse (drop-while (hash-set char) (reverse string)))))
 
-(defn- generate-R-java [aapt manifest android-jar res]
-  (let [result (run-aapt aapt nil manifest android-jar res)]
+(defn- generate-R-java [aapt manifest android-jar res src]
+  (let [result (run-aapt aapt src nil manifest android-jar res)]
     (info (case (:exit result)
                0 "✓ R.java updated"
-               (clear-trailing \newline (str "❌ error with R.java generatino: " ( :err result)))))
+               (clear-trailing \newline (str "❌ error with R.java generation: " ( :err result)))))
     (flush)
     result))
 
@@ -238,17 +239,18 @@ This will also generate a R.java file in destpath/src"
         android-jar (android-jar-from-manifest (:android-manifest my-args))
         res (:res my-args)
         dir (:res my-args)
+        java-src (first (:java-src-paths my-args))
         to-be-excluded? (fn [path]
                           (reduce (fn [acc value] (or acc (re-matches value path)))
                                   false
                                   non-res-files))]
-    (generate-R-java aapt manifest android-jar res)
+    (generate-R-java aapt manifest android-jar res java-src)
     (watch/add (clojure.java.io/file dir)
                :my-watch
                (fn [obj key prev next]                       
                  (let [path (.toString (second next))]                         
                    (if (not (to-be-excluded? path))
-                     (generate-R-java aapt manifest android-jar res))))
+                     (generate-R-java aapt manifest android-jar res java-src))))
                {
                 :types #{:create :modify :delete}})))
 
@@ -286,14 +288,17 @@ This can actually happen only if the watch sort of stops itself"
   [project & args]
   (let [args (absolutize-paths
               (get-arguments project
-                             [:res :source-paths :target-path :android-manifest])
+                             [:java-source-paths :res :source-paths :target-path :android-manifest])
               #{:res :target-path :android-manifest})
         aapt (get-aapt-location)
         manifest (:android-manifest args)
         android-jar (android-jar-from-manifest manifest)
         res (:res args)
-        dir (:res args)]
-    (generate-R-java aapt manifest android-jar res)))
+        dir (:res args)
+        java-src (first (:java-source-paths args))]
+    (if (nil? java-src) (abort "no :java-src-paths specified (at least one is needed)"))
+    (info "Using '" java-src "' for the R.java output…")
+    (generate-R-java aapt manifest android-jar res java-src)))
 
 
 (defn aar-tool
