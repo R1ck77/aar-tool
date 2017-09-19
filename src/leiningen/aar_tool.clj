@@ -181,7 +181,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
      aar-file)))
 
 
-(defn- convert-path-to-absolute [path]
+(defn convert-path-to-absolute [path]
   (.toString (.normalize (.toAbsolutePath (.toPath (java.io.File. path))))))
 
 (defn absolutize-paths-selectively [m-options s-keys]
