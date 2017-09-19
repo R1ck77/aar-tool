@@ -13,8 +13,9 @@
 (def r-txt "R.txt")
 (def non-res-files [#".*[.]swp$" #".*~"])
 
-(defn- get-api-level [manifest-path]
+(defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
+  [manifest-path]
   (let [attrs (:attrs
          (first
           (filter #(= (:tag %) :uses-sdk) (:content (xml/parse manifest-path)))))]
@@ -23,8 +24,9 @@
                           (:android:minSdkVersion attrs)
                           "1"))))
 
-(defn- all-directories? [base & childs]
+(defn- all-directories? 
   "Returns true if and only if both base and all its childs are directories"
+  [base & childs]
   (and
    (.isDirectory (io/file base))
    (reduce (fn [acc value]
@@ -32,25 +34,28 @@
            true
            childs)))
 
-(defn- get-android-jar-location [sdk version]
+(defn- get-android-jar-location 
   "Return the path of the android.jar for a specific android version
 
-Throw a runtime exception if not found or not readable"
+  Throw a runtime exception if not found or not readable"
+  [sdk version]
   (let [jar (io/file (apply str (interpose java.io.File/separator [sdk "platforms" (str "android-" version) "android.jar"])))]
     (if (and (.exists jar) (.canRead jar))
       (.getAbsolutePath jar)
       (throw (RuntimeException. (str "\"" (.getAbsolutePath jar) "\" doesn't exist, or is not readable"))))))
 
-(defn- get-all-build-tools [sdk]
+(defn- get-all-build-tools
   "Return a sequence of all build-tools versions available"
+  [sdk]
    (seq (.list (io/file sdk "build-tools"))))
 
-(defn- get-sdk-location []
+(defn- get-sdk-location
   "Locate the android sdk from the informations at hand.
 
 Uses the ANDROID_HOME env. variable only, at the moment.
 
 Throw a RuntimeException if none can be found"
+  []
   (let [home (System/getenv "ANDROID_HOME")]
     (if (all-directories? home "build-tools" "platforms" "tools")
       home
@@ -73,12 +78,14 @@ The 0-arity version uses the sdk found with 'get-sdk-location' and the
        (.getAbsolutePath aapt)
        (throw (RuntimeException. (str "\"" (.getAbsolutePath aapt) "\" doesn't exist, or is not an executable")))))))
 
-(defn- android-jar-from-manifest [manifest-path]
+(defn- android-jar-from-manifest
   "Return the path of android.jar from the android manifest and the environment"
+  [manifest-path]
   (get-android-jar-location  (get-sdk-location) (get-api-level manifest-path)))
 
-(defn- get-arguments [project xs]
+(defn- get-arguments
   "Read the arguments from the project, fail if any is missing"
+  [project xs]
   (debug "Ensuring that the project arguments are there")
   (reduce (fn [m v]
             (if (contains? project v)
@@ -103,20 +110,23 @@ If create-if-missing is set to true, the function will try to fix that, no solut
            (check-is-directory! path false))
          (abort (str "The path \"" path "\" doesn't exist, or is not a directory")))))))
 
-(defn- path-from-dirs [base & elements]
+(defn- path-from-dirs
   "creating a Path in java 7 from clojure is messy"
+  [base & elements]
   (java.nio.file.Paths/get base (into-array String elements)))
 
-(defn- copy-file [source-path dest-path]
+(defn- copy-file
   "Kudos to this guy: https://clojuredocs.org/clojure.java.io/copy"
+  [source-path dest-path]
   (io/copy (io/file source-path) (io/file dest-path)))
 
 ;;;; TODO/FIXME: The "src" string is completely bogus and will break
 ;;;; watch-res if we specify a different source dir in leinigen
-(defn- run-aapt [aapt destpath sympath manifest android-jar res]
+(defn- run-aapt
   "Run the aapt command with the parameters required to generate a R.txt file
 
-This will also generate a R.java file in destpath/src"
+  This will also generate a R.java file in destpath/src"
+  [aapt destpath sympath manifest android-jar res]
   (let [src-path (if (nil? destpath)
                    (do (warn "Using hard-coded src-java as R.java path") "src-java")
                    destpath)]
@@ -146,8 +156,9 @@ This will also generate a R.java file in destpath/src"
                 (apply sh sh-arguments))]
       res)))
 
-(defn- filter-temp [xs]
+(defn- filter-temp
   "Remove from the list of paths/pairs the files ending with ~"
+  [xs]
   (filter
    (fn [v]
      (not (re-matches #".*~$" (if (string? v)
@@ -155,8 +166,9 @@ This will also generate a R.java file in destpath/src"
                                 (first v)))))
    xs))
 
-(defn- zip-contents [work-path manifest res-dir jar]
+(defn- zip-contents
   "Create a .aar library in a temporary location. Returns the path"
+  [work-path manifest res-dir jar]
   (let [
         full-r-path (.toString (path-from-dirs work-path r-txt))
         aar-file (.toString (path-from-dirs work-path "library.aar"))
@@ -242,8 +254,9 @@ This will also generate a R.java file in destpath/src"
     (flush)
     result))
 
-(defn- watch-res-directory [my-args]
+(defn- watch-res-directory
   "Update the contents of the R.java file when a :res file changes"
+  [my-args]
   
   (let [aapt (get-aapt-location)
         manifest (:android-manifest my-args)
@@ -265,14 +278,16 @@ This will also generate a R.java file in destpath/src"
                {
                 :types #{:create :modify :delete}})))
 
-(defn- watches-for-file? [file]
+(defn- watches-for-file?
   "Returns true if the watch listener disappeared
 
 This can actually happen only if the watch sort of stops itself"
+  [file]
   (> (count (watch/list file)) 0))
 
-(defn- blocking-watch [project]
+(defn- blocking-watch
   "Starts a watch on the specific directory, and blocks"
+  [project]
   (let [args (absolutize-paths
               (get-arguments project
                              [:res :source-paths :target-path :android-manifest])
@@ -307,7 +322,8 @@ This can actually happen only if the watch sort of stops itself"
         res (:res args)
         dir (:res args)
         java-src (first (:java-source-paths args))]
-    (if (nil? java-src) (abort "no :java-src-paths specified (at least one is needed)"))
+    (if (nil? java-src)
+      (abort "no :java-src-paths specified (at least one is needed)"))
     (info "Using '" java-src "' for the R.java output…")
     (generate-R-java aapt manifest android-jar res java-src)))
 
