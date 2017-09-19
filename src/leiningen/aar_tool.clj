@@ -184,14 +184,9 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 (defn- convert-path-to-absolute [path]
   (.toString (.normalize (.toAbsolutePath (.toPath (java.io.File. path))))))
 
-(defn- absolutize-paths [m s]
-  (reduce (fn [res [key value]]
-            (assoc res
-                   key (if (contains? s key)
-                         (convert-path-to-absolute value)
-                         value)))            
-          {}
-          m))
+(defn absolutize-paths-selectively [m-options s-keys]
+  (into m-options (map (fn [[key value]] (vector key (convert-path-to-absolute value)))
+                       (filter #(-> % first s-keys) m-options))))
 
 (defn- move [source destination]
   (debug "Moving" source "to" destination)
@@ -215,7 +210,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 (defn create-aar 
   "Create a AAR library suitable for Android integration"
   [project arguments]
-  (let [my-args (absolutize-paths
+  (let [my-args (absolutize-paths-selectively
                  (get-arguments project [:aar-name :aot :res :source-paths :target-path :android-manifest])
                  #{:aar-name :res :target-path :android-manifest})]
     (check-arguments my-args)
@@ -288,7 +283,7 @@ This can actually happen only if the watch sort of stops itself"
 (defn- blocking-watch
   "Starts a watch on the specific directory, and blocks"
   [project]
-  (let [args (absolutize-paths
+  (let [args (absolutize-paths-selectively
               (get-arguments project
                              [:res :source-paths :target-path :android-manifest])
               #{:res :target-path :android-manifest})]
@@ -312,7 +307,7 @@ This can actually happen only if the watch sort of stops itself"
   
   The file is created in the src directory"
   [project & args]
-  (let [args (absolutize-paths
+  (let [args (absolutize-paths-selectively
               (get-arguments project
                              [:java-source-paths :res :source-paths :target-path :android-manifest])
               #{:res :target-path :android-manifest})
