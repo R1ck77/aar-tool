@@ -164,8 +164,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
    (fn [v]
      (not (re-matches #".*~$" (if (string? v)
                                 v
-                                (first v)))))
-   xs))
+                                (first v))))) xs))
 
 (defn- zip-contents
   "Create a .aar library in a temporary location. Returns the path"
@@ -187,8 +186,10 @@ If create-if-missing is set to true, the function will try to fix that, no solut
       .toPath .toAbsolutePath .normalize .toString))
 
 (defn absolutize-paths-selectively [m-options s-keys]
-  (into m-options (map (fn [[key value]] (vector key (convert-path-to-absolute value)))
-                       (filter #(-> % first s-keys) m-options))))
+  (into m-options
+        (map (fn [[key value]]
+               (vector key (convert-path-to-absolute value)))
+             (filter #(-> % first s-keys) m-options))))
 
 (defn- move [source destination]
   (debug "Moving" source "to" destination)
