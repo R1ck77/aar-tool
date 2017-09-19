@@ -4,6 +4,7 @@
         [clojure.xml :as xml]
         [clojure.java.io :as io]
         [couchgames.utils.zip :as czip])
+  (:import [java.io File])
   (:require [hara.io.watch]
             [hara.common.watch :as watch]))
 
@@ -39,7 +40,7 @@
 
   Throw a runtime exception if not found or not readable"
   [sdk version]
-  (let [jar (io/file (apply str (interpose java.io.File/separator [sdk "platforms" (str "android-" version) "android.jar"])))]
+  (let [jar (io/file (apply str (interpose File/separator [sdk "platforms" (str "android-" version) "android.jar"])))]
     (if (and (.exists jar) (.canRead jar))
       (.getAbsolutePath jar)
       (throw (RuntimeException. (str "\"" (.getAbsolutePath jar) "\" doesn't exist, or is not readable"))))))
@@ -73,7 +74,7 @@ The 0-arity version uses the sdk found with 'get-sdk-location' and the
     (get-aapt-location sdk
                        (last (sort (get-all-build-tools sdk))))))
   ([sdk version]
-   (let [aapt (io/file (apply str (interpose java.io.File/separator [sdk "build-tools" version "aapt"])))]
+   (let [aapt (io/file (apply str (interpose File/separator [sdk "build-tools" version "aapt"])))]
      (if (and (.exists aapt) (.canExecute aapt))
        (.getAbsolutePath aapt)
        (throw (RuntimeException. (str "\"" (.getAbsolutePath aapt) "\" doesn't exist, or is not an executable")))))))
@@ -101,7 +102,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
   ([path] (check-is-directory! path false))
   ([path create-if-missing]
    (debug (str "Checking for \"" path "\" existance"))
-   (let [fpath (java.io.File. path)]
+   (let [fpath (File. path)]
      (if (not (.isDirectory fpath))
        (if (and create-if-missing (not (.exists fpath)))
          (do
@@ -172,7 +173,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
   (let [
         full-r-path (.toString (path-from-dirs work-path r-txt))
         aar-file (.toString (path-from-dirs work-path "library.aar"))
-        res-files (filter-temp (files-in-dir res-dir (.getParent (java.io.File. res-dir))))
+        res-files (filter-temp (files-in-dir res-dir (.getParent (File. res-dir))))
         zip-arguments (vec (concat [aar-file [jar expected-jar-name] [full-r-path r-txt] [manifest android-manifest-name]]
                                    res-files))]
    (debug "invoking the zip command with arguments:" zip-arguments)
@@ -182,7 +183,8 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 
 
 (defn convert-path-to-absolute [path]
-  (.toString (.normalize (.toAbsolutePath (.toPath (java.io.File. path))))))
+  (-> (File. path)
+      .toPath .toAbsolutePath .normalize .toString))
 
 (defn absolutize-paths-selectively [m-options s-keys]
   (into m-options (map (fn [[key value]] (vector key (convert-path-to-absolute value)))
@@ -191,15 +193,15 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 (defn- move [source destination]
   (debug "Moving" source "to" destination)
   (try
-    (.delete (java.io.File. destination))
+    (.delete (File. destination))
     (catch Exception e (abort "Unable to remove the destination file" destination "to make space for the resulting aar")))
-  (.renameTo (java.io.File. source) (java.io.File. destination)))
+  (.renameTo (File. source) (File. destination)))
 
 (defn- check-arguments [params]
   (let [manifest (:android-manifest params)]
-    (if (not= "res" (.getName (java.io.File. (:res params)))) (abort "The :res option must point to a directory named \"res\""))
-    (if (not= android-manifest-name (.getName (java.io.File. manifest))) (abort "The :res option must point to a directory named \"" android-manifest-name "\""))
-    (if (not (.exists (java.io.File. manifest))) (abort (str "The file \"" manifest "\" does not exist")))
+    (if (not= "res" (.getName (File. (:res params)))) (abort "The :res option must point to a directory named \"res\""))
+    (if (not= android-manifest-name (.getName (File. manifest))) (abort "The :res option must point to a directory named \"" android-manifest-name "\""))
+    (if (not (.exists (File. manifest))) (abort (str "The file \"" manifest "\" does not exist")))
     (if (not= (:aot params) [:all]) (abort (str ":aot :all must be specified in project.clj!")))))
 
 (defn- run-aapt-noisy [& args]

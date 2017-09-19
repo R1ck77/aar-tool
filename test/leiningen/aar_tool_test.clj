@@ -17,8 +17,7 @@
            (aar/convert-path-to-absolute ""))))
   (testing "normalizes relative paths"
     (is (= (aar/convert-path-to-absolute "foo/../bar/baz")
-           (aar/convert-path-to-absolute "foo/a/b/c/../../../../bar/baz")))
-    )
+           (aar/convert-path-to-absolute "foo/a/b/c/../../../../bar/baz"))))
   (testing "normalizes even absolute paths"
     (is (= "/foo/bar/baz"
            (aar/convert-path-to-absolute "/foo/bar/../bar/baz")))))
