@@ -33,3 +33,15 @@
       (is (= {:a :filtered :b :not-filtered}
              (aar/absolutize-paths-selectively {:a "some path", :b :not-filtered}
                                                #{:a}))))))
+
+(deftest test-all-directories?
+  (testing "all-directories? just check whether the base path is a directory if no other dir is present"
+    (with-redefs [aar/is-directory? #(= % :dir)]
+      (is (aar/all-directories? :dir))
+      (is (not (aar/all-directories? :not-dir)))))
+  (testing "all-directories? returns false if either the base or any child path is not a directory"
+    (with-redefs [aar/is-directory? #(not  (.contains (str %) ":not-dir"))]
+      (is (aar/all-directories? :dir :dir :dir :dir :dir :dir))
+      (is (not (aar/all-directories? :not-dir :dir :dir)))
+      (is (not (aar/all-directories? :dir :not-dir :dir)))
+      (is (not (aar/all-directories? :dir :dir :not-dir))))))

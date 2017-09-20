@@ -25,16 +25,6 @@
                           (:android:minSdkVersion attrs)
                           "1"))))
 
-(defn- all-directories? 
-  "Returns true if and only if both base and all its childs are directories"
-  [base & childs]
-  (and
-   (.isDirectory (io/file base))
-   (reduce (fn [acc value]
-             (and acc (.isDirectory (io/file base value))))
-           true
-           childs)))
-
 (defn- get-android-jar-location 
   "Return the path of the android.jar for a specific android version
 
@@ -50,6 +40,19 @@
   [sdk]
    (seq (.list (io/file sdk "build-tools"))))
 
+(defn is-directory? [file]
+  (.isDirectory file))
+
+(defn all-directories? 
+  "Returns true if and only if both base and all its childs are directories"
+  [base-path & child-paths]
+  (and
+   (is-directory? base-path)
+   (reduce (fn [acc value]
+             (and acc (is-directory? (str base-path File/separator value))))
+           true
+           child-paths)))
+
 (defn- get-sdk-location
   "Locate the android sdk from the informations at hand.
 
@@ -58,7 +61,7 @@ Uses the ANDROID_HOME env. variable only, at the moment.
 Throw a RuntimeException if none can be found"
   []
   (let [home (System/getenv "ANDROID_HOME")]
-    (if (all-directories? home "build-tools" "platforms" "tools")
+    (if (apply all-directories? (map io/file  [home "build-tools" "platforms" "tools"]))
       home
       (throw (RuntimeException. "Unable to find the android sdk (is ANDROID_HOME correctly set?)")))))
 
