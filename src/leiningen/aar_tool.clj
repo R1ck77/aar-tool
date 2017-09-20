@@ -40,6 +40,9 @@
   [sdk]
    (seq (.list (io/file sdk "build-tools"))))
 
+(defn composite-path-is-dir? [base-path child-path]
+  (is-directory? (str base-path File/separator child-path)))
+
 (defn is-directory? [file]
   (.isDirectory file))
 
@@ -48,10 +51,8 @@
   [base-path & child-paths]
   (and
    (is-directory? base-path)
-   (reduce (fn [acc value]
-             (and acc (is-directory? (str base-path File/separator value))))
-           true
-           child-paths)))
+   (reduce (fn [acc child] (and acc (composite-path-is-dir? base-path child)))
+           true child-paths)))
 
 (defn- get-sdk-location
   "Locate the android sdk from the informations at hand.
