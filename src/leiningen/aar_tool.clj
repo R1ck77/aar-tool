@@ -40,11 +40,11 @@
   [sdk]
    (seq (.list (io/file sdk "build-tools"))))
 
-(defn composite-path-is-dir? [base-path child-path]
-  (is-directory? (str base-path File/separator child-path)))
-
 (defn is-directory? [file]
   (.isDirectory file))
+
+(defn composite-path-is-dir? [base-path child-path]
+  (is-directory? (io/file (str base-path File/separator child-path))))
 
 (defn all-directories? 
   "Returns true if and only if both base and all its childs are directories"
@@ -63,36 +63,30 @@ The check assumes that ANDROID_HOME contains a number of directories"
 (defn get-env [var]
   (System/getenv var))
 
-(defn- is-sdk-location?
-  [android-home]
-  (if (android-home-is-valid? android-home)
-   android-home
-    (throw (RuntimeException. "Unable to find the android sdk (is ANDROID_HOME correctly set?)"))))
-
 (defn get-android-home []
   (get-env "ANDROID_HOME"))
 
+(defn get-most-recent-aapt-location [sdk version]
+  "Validate the sdk and return the highest versioned aapt"
+  (if (not (android-home-is-valid? sdk))
+    (throw (RuntimeException. "sdk not recognized: is the content of ANDROID_HOME valid?"))
+    (let [aapt (io/file (apply str (interpose File/separator [sdk "build-tools" version "aapt"])))]
+      (if (and (.exists aapt) (.canExecute aapt))
+        (.getAbsolutePath aapt)
+        (throw (RuntimeException. (str "\"" (.getAbsolutePath aapt) "\" doesn't exist, or is not an executable")))))))
+
 (defn- get-aapt-location
-  "Return the path of aapt for a specific version of the build tools in the sdk
+  "Return the path of aapt for a specific version of the build tools in the sdk using the sdk found with 'get-android-home' and the
+highest versioned build tool found with 'get-all-build-tools'.
 
-The 0-arity version uses the sdk found with 'get-android-home' and the
- highest versioned build tool found with 'get-all-build-tools'.
-
-  Throw a runtime exception if not found or not executable"
-  ([]
-   (let [sdk (get-sdk-location)]
-    (get-aapt-location sdk
-                       (last (sort (get-all-build-tools sdk))))))
-  ([sdk version]
-   (let [aapt (io/file (apply str (interpose File/separator [sdk "build-tools" version "aapt"])))]
-     (if (and (.exists aapt) (.canExecute aapt))
-       (.getAbsolutePath aapt)
-       (throw (RuntimeException. (str "\"" (.getAbsolutePath aapt) "\" doesn't exist, or is not an executable")))))))
+Throw a runtime exception if not found or not executable"
+  ([sdk]
+   (get-most-recent-aapt-location sdk (last (sort (get-all-build-tools sdk))))))
 
 (defn- android-jar-from-manifest
   "Return the path of android.jar from the android manifest and the environment"
   [manifest-path]
-  (get-android-jar-location  (get-sdk-location) (get-api-level manifest-path)))
+  (get-android-jar-location  (get-android-home) (get-api-level manifest-path)))
 
 (defn- get-arguments
   "Read the arguments from the project, fail if any is missing"
@@ -235,7 +229,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
       (debug "The aar compilation will be made in " tmp-path)
       (check-is-directory! (:res my-args))
       (check-is-directory! tmp-path true)
-      (run-aapt-noisy (get-aapt-location)
+      (run-aapt-noisy (get-aapt-location (get-android-home))
                       dest-path
                       tmp-path
                       (:android-manifest my-args)
@@ -266,7 +260,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
   "Update the contents of the R.java file when a :res file changes"
   [my-args]
   
-  (let [aapt (get-aapt-location)
+  (let [aapt (get-aapt-location (get-android-home))
         manifest (:android-manifest my-args)
         android-jar (android-jar-from-manifest (:android-manifest my-args))
         res (:res my-args)
@@ -324,7 +318,7 @@ This can actually happen only if the watch sort of stops itself"
               (get-arguments project
                              [:java-source-paths :res :source-paths :target-path :android-manifest])
               #{:res :target-path :android-manifest})
-        aapt (get-aapt-location)
+        aapt (get-aapt-location (get-android-home))
         manifest (:android-manifest args)
         android-jar (android-jar-from-manifest manifest)
         res (:res args)

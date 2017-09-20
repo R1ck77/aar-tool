@@ -47,7 +47,7 @@
       (is (not (aar/all-directories? :dir :dir :not-dir))))))
 
 (deftest test-get-android-home
-  (testing "get-android-home returns the content of ANDROID_HOME"
+  (testing "get-android-home returns the content of ANDROID_HOME if is-sdk-location?"
     (with-redefs [aar/get-env (fn [x] x)]
       (is (= "ANDROID_HOME" (aar/get-android-home))))))
 
