@@ -45,3 +45,10 @@
       (is (not (aar/all-directories? :not-dir :dir :dir)))
       (is (not (aar/all-directories? :dir :not-dir :dir)))
       (is (not (aar/all-directories? :dir :dir :not-dir))))))
+
+(deftest test-get-android-home
+  (testing "get-android-home returns the content of ANDROID_HOME"
+    (with-redefs [aar/get-env (fn [x] x)]
+      (is (= "ANDROID_HOME" (aar/get-android-home))))))
+
+

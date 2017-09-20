@@ -54,23 +54,29 @@
    (reduce (fn [acc child] (and acc (composite-path-is-dir? base-path child)))
            true child-paths)))
 
-(defn- get-sdk-location
-  "Locate the android sdk from the informations at hand.
+(defn- android-home-is-valid? [android-home]
+  "Check if the ANDROID_HOME variable points to a valid android-sdk directory
 
-Uses the ANDROID_HOME env. variable only, at the moment.
+The check assumes that ANDROID_HOME contains a number of directories"
+  (apply all-directories? (map io/file  [android-home "build-tools" "platforms" "tools"])))
 
-Throw a RuntimeException if none can be found"
-  []
-  (let [home (System/getenv "ANDROID_HOME")]
-    (if (apply all-directories? (map io/file  [home "build-tools" "platforms" "tools"]))
-      home
-      (throw (RuntimeException. "Unable to find the android sdk (is ANDROID_HOME correctly set?)")))))
+(defn get-env [var]
+  (System/getenv var))
+
+(defn- is-sdk-location?
+  [android-home]
+  (if (android-home-is-valid? android-home)
+   android-home
+    (throw (RuntimeException. "Unable to find the android sdk (is ANDROID_HOME correctly set?)"))))
+
+(defn get-android-home []
+  (get-env "ANDROID_HOME"))
 
 (defn- get-aapt-location
   "Return the path of aapt for a specific version of the build tools in the sdk
 
-The 0-arity version uses the sdk found with 'get-sdk-location' and the
- highest build tool found with 'get-all-build-tools'.
+The 0-arity version uses the sdk found with 'get-android-home' and the
+ highest versioned build tool found with 'get-all-build-tools'.
 
   Throw a runtime exception if not found or not executable"
   ([]
