@@ -66,21 +66,10 @@ The check assumes that ANDROID_HOME contains a number of directories"
 (defn get-env [var]
   (System/getenv var))
 
-(defn error [& strings]
-  (map println strings))
-
-(defn exit [status]
-  (spit "/tmp/test" "exit was called despite everything")
-  (System/exit status))
-
-(defn exit-with-error [& msg]
-  (apply error msg)
-  (exit 1))
-
 (defn get-android-home []
   (if-let [android-home (get-env android-home-env-var)]
     android-home
-    (exit-with-error (str "The variable \"" android-home-env-var "\" not set"))))
+    (abort (str "The variable \"" android-home-env-var "\" not set"))))
 
 (defn get-most-recent-aapt-location [sdk version]
   "Validate the sdk and return the highest versioned aapt"
@@ -341,9 +330,10 @@ This can actually happen only if the watch sort of stops itself"
         dir (:res args)
         java-src (first (:java-source-paths args))]
     (if (nil? java-src)
-      (abort "no :java-src-paths specified (at least one is needed)"))
-    (info "Using '" java-src "' for the R.java output…")
-    (generate-R-java aapt manifest android-jar res java-src)))
+      (abort "no :java-src-paths specified (at least one is needed)")
+      (do
+        (info "Using '" java-src "' for the R.java output…")
+        (generate-R-java aapt manifest android-jar res java-src)))))
 
 
 (defn aar-tool

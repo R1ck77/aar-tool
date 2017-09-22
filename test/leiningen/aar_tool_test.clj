@@ -51,14 +51,11 @@
     (with-redefs [aar/get-env (fn [x] x)]
       (is (= "ANDROID_HOME" (aar/get-android-home)))))
     (testing "get-android-home prints an error and exits if ANDROID_HOME is not defined"
-      (let [error-called (atom false)
-            exit-called (atom false)]
+      (let [abort-called (atom nil)]
         (with-redefs [aar/get-env (constantly nil)
-                      aar/error (fn [& args] (reset! error-called true))
-                      aar/exit (fn [status] (reset! exit-called status))]
+                      leiningen.core.main/abort (fn [message] (reset! abort-called message))]
           (aar/get-android-home)
-          (is @error-called)
-          (is (and (number? @exit-called) (not= 0 @exit-called)))))))
+          (is @abort-called)))))
 
 
 
