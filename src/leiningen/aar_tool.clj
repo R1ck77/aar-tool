@@ -8,6 +8,8 @@
   (:require [hara.io.watch]
             [hara.common.watch :as watch]))
 
+(def android-home-env-var "ANDROID_HOME")
+
 (def aar-build-dir "aar")
 (def android-manifest-name "AndroidManifest.xml")
 (def expected-jar-name "classes.jar")
@@ -17,21 +19,22 @@
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
   [manifest-path]
-  (let [attrs (:attrs
-         (first
-          (filter #(= (:tag %) :uses-sdk) (:content (xml/parse manifest-path)))))]
+  (let [attrs (:attrs (first (filter #(= (:tag %) :uses-sdk) (:content (xml/parse manifest-path)))))]
     (Integer/valueOf (or (:android:maxSdkVersion attrs)
                           (:android:targetSdkVersion attrs)
                           (:android:minSdkVersion attrs)
                           "1"))))
 
-(defn- get-android-jar-location 
+(defn readable-file? [file]
+  (and (.exists file) (.canRead file)))
+
+(defn get-android-jar-location 
   "Return the path of the android.jar for a specific android version
 
   Throw a runtime exception if not found or not readable"
   [sdk version]
   (let [jar (io/file (apply str (interpose File/separator [sdk "platforms" (str "android-" version) "android.jar"])))]
-    (if (and (.exists jar) (.canRead jar))
+    (if (readable-file? jar)
       (.getAbsolutePath jar)
       (throw (RuntimeException. (str "\"" (.getAbsolutePath jar) "\" doesn't exist, or is not readable"))))))
 
@@ -63,8 +66,21 @@ The check assumes that ANDROID_HOME contains a number of directories"
 (defn get-env [var]
   (System/getenv var))
 
+(defn error [& strings]
+  (map println strings))
+
+(defn exit [status]
+  (spit "/tmp/test" "exit was called despite everything")
+  (System/exit status))
+
+(defn exit-with-error [& msg]
+  (apply error msg)
+  (exit 1))
+
 (defn get-android-home []
-  (get-env "ANDROID_HOME"))
+  (if-let [android-home (get-env android-home-env-var)]
+    android-home
+    (exit-with-error (str "The variable \"" android-home-env-var "\" not set"))))
 
 (defn get-most-recent-aapt-location [sdk version]
   "Validate the sdk and return the highest versioned aapt"
