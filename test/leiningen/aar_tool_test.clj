@@ -57,7 +57,7 @@
           (aar/get-android-home)
           (is @abort-called)))))
 
-(deftest check-jar-file
+(deftest test-check-jar-file
   (testing "returns the argument if it's readable"
     (with-redefs [aar/readable-file? (constantly true)]
       (is (= :argument (aar/check-jar-file :argument)))))
@@ -66,6 +66,11 @@
       (with-redefs [aar/readable-file? (constantly false)                  
                     leiningen.core.main/abort (fn [ & _] (reset! abort-called true))]
         (aar/check-jar-file (clojure.java.io/file "/tmp/candidate.jar"))
-        (is @abort-called)))
-    ))
+        (is @abort-called)))))
+
+(deftest test-get-android-jar-location
+  (testing "calls check-jar-file on the result of get-android-jar-location"
+    (with-redefs [aar/android-jar-file (fn [ & args ] (vec args))
+                  aar/check-jar-file #(conj % :check-jar-file)]
+      (is (= [:sdk :version :check-jar-file] (aar/get-android-jar-location :sdk :version))))))
 

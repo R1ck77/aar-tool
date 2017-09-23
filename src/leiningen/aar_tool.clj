@@ -38,11 +38,8 @@
     (abort (str "\"" (.getAbsolutePath file) "\" doesn't exist, or is not readable"))))
 
 (defn get-android-jar-location 
-  "Return the path of the android.jar-file for a specific android version
-
-  Throw a runtime exception if not found or not readable"
   [sdk version]
-    (check-jar-file (android-jar-file sdk version)))
+  (check-jar-file (android-jar-file sdk version)))
 
 (defn- get-all-build-tools
   "Return a sequence of all build-tools versions available"
