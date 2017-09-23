@@ -223,6 +223,11 @@ If create-if-missing is set to true, the function will try to fix that, no solut
     (if (not= 0 (:exit res))
         (abort (str "Invocation of aapt failed with error: \"" (:err res) "\"")))))
 
+(defn remove-R-classes [ & args]
+  (sh "rm"
+      "target/classes/it/couchgames/lib/cjutils/R$*.class"
+      "target/classes/it/couchgames/lib/cjutils/R.class"))
+
 (defn create-aar 
   "Create a AAR library suitable for Android integration"
   [project arguments]
@@ -244,7 +249,8 @@ If create-if-missing is set to true, the function will try to fix that, no solut
                       (:android-manifest my-args)
                       (android-jar-from-manifest (:android-manifest my-args))
                       (:res my-args))
-      
+      ;;; This is "two girls one cup"-dirty:
+      (remove-R-classes "something")
       (let [aar-location (zip-contents tmp-path
                                        (:android-manifest my-args)
                                        (:res my-args)
@@ -339,17 +345,13 @@ This can actually happen only if the watch sort of stops itself"
         (info "Using '" java-src "' for the R.java output…")
         (generate-R-java aapt manifest android-jar res java-src)))))
 
-(defn create-R-class [project & args]
-  (println "The project is:" project "and the args are:" args))
-
 (defn aar-tool
   "Functions for android development"
-  {:subtasks [#'create-aar #'watch-res #'create-R #'create-R-class]}
+  {:subtasks [#'create-aar #'watch-res #'create-R]}
   [project & args]
   (case (first args) 
     nil (info "An action must be provided")
     "create-aar" (create-aar project (rest args))
     "watch-res" (watch-res project (rest args))
     "create-R" (create-R project (rest args))
-    "create-R-class" (create-R-class project (rest args))
     (abort "Unknown option")))
