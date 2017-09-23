@@ -95,7 +95,7 @@ Throw a runtime exception if not found or not executable"
 (defn- android-jar-from-manifest
   "Return the path of android.jar from the android manifest and the environment"
   [manifest-path]
-  (get-android-jar-location  (get-android-home) (get-api-level manifest-path)))
+  (.getAbsolutePath (get-android-jar-location  (get-android-home) (get-api-level manifest-path))))
 
 (defn- get-arguments
   "Read the arguments from the project, fail if any is missing"
@@ -339,14 +339,17 @@ This can actually happen only if the watch sort of stops itself"
         (info "Using '" java-src "' for the R.java output…")
         (generate-R-java aapt manifest android-jar res java-src)))))
 
+(defn create-R-class [project & args]
+  (println "The project is:" project "and the args are:" args))
 
 (defn aar-tool
   "Functions for android development"
-  {:subtasks [#'create-aar #'watch-res #'create-R]}
+  {:subtasks [#'create-aar #'watch-res #'create-R #'create-R-class]}
   [project & args]
   (case (first args) 
     nil (info "An action must be provided")
     "create-aar" (create-aar project (rest args))
     "watch-res" (watch-res project (rest args))
     "create-R" (create-R project (rest args))
+    "create-R-class" (create-R-class project (rest args))
     (abort "Unknown option")))
