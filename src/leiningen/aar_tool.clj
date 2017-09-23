@@ -36,7 +36,7 @@
   (let [jar (io/file (apply str (interpose File/separator [sdk "platforms" (str "android-" version) "android.jar"])))]
     (if (readable-file? jar)
       (.getAbsolutePath jar)
-      (throw (RuntimeException. (str "\"" (.getAbsolutePath jar) "\" doesn't exist, or is not readable"))))))
+      (abort (str "\"" (.getAbsolutePath jar) "\" doesn't exist, or is not readable")))))
 
 (defn- get-all-build-tools
   "Return a sequence of all build-tools versions available"
