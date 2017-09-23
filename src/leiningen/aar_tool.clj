@@ -26,7 +26,8 @@
                           "1"))))
 
 (defn readable-file? [file]
-  (and (.exists file) (.canRead file)))
+  (and (.exists file)
+       (.canRead file)))
 
 (defn android-jar-file [sdk version]
   (io/file (apply str (interpose File/separator

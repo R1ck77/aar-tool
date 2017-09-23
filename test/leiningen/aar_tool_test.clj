@@ -72,5 +72,6 @@
   (testing "calls check-jar-file on the result of get-android-jar-location"
     (with-redefs [aar/android-jar-file (fn [ & args ] (vec args))
                   aar/check-jar-file #(conj % :check-jar-file)]
-      (is (= [:sdk :version :check-jar-file] (aar/get-android-jar-location :sdk :version))))))
+      (is (= [:sdk :version :check-jar-file]
+             (aar/get-android-jar-location :sdk :version))))))
 
