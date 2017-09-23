@@ -28,20 +28,26 @@
 (defn readable-file? [file]
   (and (.exists file) (.canRead file)))
 
+(defn android-jar-file [sdk version]
+  (io/file (apply str (interpose File/separator
+                                 [sdk "platforms" (str "android-" version) "android.jar"]))))
+
+(defn check-jar-file [file]
+  (if (readable-file? file)
+    file
+    (abort (str "\"" (.getAbsolutePath file) "\" doesn't exist, or is not readable"))))
+
 (defn get-android-jar-location 
-  "Return the path of the android.jar for a specific android version
+  "Return the path of the android.jar-file for a specific android version
 
   Throw a runtime exception if not found or not readable"
   [sdk version]
-  (let [jar (io/file (apply str (interpose File/separator [sdk "platforms" (str "android-" version) "android.jar"])))]
-    (if (readable-file? jar)
-      (.getAbsolutePath jar)
-      (abort (str "\"" (.getAbsolutePath jar) "\" doesn't exist, or is not readable")))))
+    (check-jar-file (android-jar-file sdk version)))
 
 (defn- get-all-build-tools
   "Return a sequence of all build-tools versions available"
   [sdk]
-   (seq (.list (io/file sdk "build-tools"))))
+  (seq (.list (io/file sdk "build-tools"))))
 
 (defn is-directory? [file]
   (.isDirectory file))
