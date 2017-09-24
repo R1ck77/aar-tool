@@ -204,12 +204,19 @@ If create-if-missing is set to true, the function will try to fix that, no solut
                (vector key (convert-path-to-absolute value)))
              (filter #(-> % first s-keys) m-options))))
 
+(defn horrible-kludge [destination]
+  (info "### About to mangle the file, this is gross 2-girls-one-cup stuff: PLEASE FIX THIS!!!!!")
+  (spit "/tmp/mangle.sh" (slurp (io/resource "mangle.sh"))) 
+  (sh "chmod" "+x" "/tmp/mangle.sh") ;;; horrible, but on the other side, this whole thing is
+  (sh "/tmp/mangle.sh" (.getAbsolutePath (File. destination))))
+
 (defn- move [source destination]
   (debug "Moving" source "to" destination)
   (try
     (.delete (File. destination))
     (catch Exception e (abort "Unable to remove the destination file" destination "to make space for the resulting aar")))
-  (.renameTo (File. source) (File. destination)))
+  (.renameTo (File. source) (File. destination))
+  (horrible-kludge (.getAbsolutePath (File. destination))))
 
 (defn- check-arguments [params]
   (let [manifest (:android-manifest params)]
@@ -222,11 +229,6 @@ If create-if-missing is set to true, the function will try to fix that, no solut
   (let [res (apply run-aapt args)]
     (if (not= 0 (:exit res))
         (abort (str "Invocation of aapt failed with error: \"" (:err res) "\"")))))
-
-(defn remove-R-classes [ & args]
-  (sh "rm"
-      "target/classes/it/couchgames/lib/cjutils/R$*.class"
-      "target/classes/it/couchgames/lib/cjutils/R.class"))
 
 (defn create-aar 
   "Create a AAR library suitable for Android integration"
@@ -249,15 +251,13 @@ If create-if-missing is set to true, the function will try to fix that, no solut
                       (:android-manifest my-args)
                       (android-jar-from-manifest (:android-manifest my-args))
                       (:res my-args))
-      ;;; This is "two girls one cup"-dirty:
-      (remove-R-classes "something")
       (let [aar-location (zip-contents tmp-path
                                        (:android-manifest my-args)
                                        (:res my-args)
                                        jar-path)]
         
-        (shutdown-agents)
         (move aar-location (:aar-name my-args))
+        (shutdown-agents)
         (info "Created" (:aar-name my-args))))))
 
 (defn- clear-trailing [char string]
