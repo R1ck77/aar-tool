@@ -205,19 +205,12 @@ If create-if-missing is set to true, the function will try to fix that, no solut
                (vector key (convert-path-to-absolute value)))
              (filter #(-> % first s-keys) m-options))))
 
-(defn horrible-kludge [destination]
-  (info "### About to mangle the file, this is gross 2-girls-one-cup stuff: PLEASE FIX THIS!!!!!")
-  (spit "/tmp/mangle.sh" (slurp (io/resource "mangle.sh"))) 
-  (sh "chmod" "+x" "/tmp/mangle.sh") ;;; horrible, but on the other side, this whole thing is
-  (sh "/tmp/mangle.sh" (.getAbsolutePath (File. destination))))
-
 (defn- move [source destination]
   (debug "Moving" source "to" destination)
   (try
     (.delete (File. destination))
     (catch Exception e (abort "Unable to remove the destination file" destination "to make space for the resulting aar")))
-  (.renameTo (File. source) (File. destination))
-  (horrible-kludge (.getAbsolutePath (File. destination))))
+  (.renameTo (File. source) (File. destination)))
 
 (defn- check-arguments [params]
   (let [manifest (:android-manifest params)]
@@ -231,9 +224,36 @@ If create-if-missing is set to true, the function will try to fix that, no solut
     (if (not= 0 (:exit res))
         (abort (str "Invocation of aapt failed with error: \"" (:err res) "\"")))))
 
+(defn wipe-class-prototype [project]
+  (info "### About to mangle the file, this is gross 2-girls-one-cup stuff: PLEASE FIX THIS!!!!!")
+  (let [r-files (conj (filter #(re-find #"^R[$].*[.]class" (.getName %)) (file-seq (io/file "target/classes/it/couchgames/lib/cjutils"))) (io/file "target/classes/it/couchgames/lib/cjutils/R.class"))]
+    (println "r-files:" r-files)
+    (dorun (map #(do
+                   (println "Deleting" % "in" (.getAbsolutePath (io/file ".")))
+                     (.delete %))
+                r-files))))
+
+(defn leiningen-task-hook [function task project args]
+  (println "About to execute the task" task)
+  ;;; Apply the task
+  (let [result (function task project args)]
+    (println "Task" task "executed")
+      ;;; if the task is javac, remove the R*.class after compilation
+    (if (= task "compile")
+      (do
+        (println "About to wipe the extra classes")
+        (wipe-class-prototype project)))
+    result))
+
+(defn activate-compile-hook []
+  (robert.hooke/add-hook #'leiningen.core.main/apply-task #'leiningen-task-hook))
+
 (defn create-aar 
   "Create a AAR library suitable for Android integration"
   [project arguments]
+  
+  (activate-compile-hook)
+
   (let [my-args (absolutize-paths-selectively
                  (get-arguments project [:aar-name :aot :res :source-paths :target-path :android-manifest])
                  #{:aar-name :res :target-path :android-manifest})]
@@ -347,43 +367,18 @@ This can actually happen only if the watch sort of stops itself"
         (info "Using '" java-src "' for the R.java output…")
         (generate-R-java aapt manifest android-jar res java-src)))))
 
-(defn wipe-class-prototype [project]
-  (let [r-files (conj (filter #(re-find #"^R[$].*[.]class" (.getName %)) (file-seq (io/file "target/classes/it/couchgames/lib/cjutils"))) (io/file "target/classes/it/couchgames/lib/cjutils/R.class"))]
-    (println "r-files:" r-files)
-    (dorun (map #(do (println "Deleting" % "in" (.getAbsolutePath (io/file ".")))
-                     (.delete %))
-                r-files))))
-
-(defn whatever [function task project args]
-  (println "About to execute the task" task)
-  ;;; Apply the task
-  (function task project args)
-  (println "Task" task "executed")
-  
-  ;;; if the task is javac, remove the R*.class after compilation
-  (if (= task "compile")
-    (do
-      (println "About to wipe the extra classes")
-      (wipe-class-prototype project)
-      )))
-
-
-(defn activate []
-  (robert.hooke/add-hook #'leiningen.core.main/apply-task #'whatever))
-
 (defn leiningen-test [project & args]
-  (activate)
+  (activate-compile-hook)
   (leiningen.core.main/apply-task "jar" project [])
   (shutdown-agents))
 
 (defn aar-tool
   "Functions for android development"
-  {:subtasks [#'create-aar #'watch-res #'create-R #'test]}
+  {:subtasks [#'create-aar #'watch-res #'create-R]}
   [project & args]
   (case (first args) 
     nil (info "An action must be provided")
     "create-aar" (create-aar project (rest args))
     "watch-res" (watch-res project (rest args))
     "create-R" (create-R project (rest args))
-    "test" (apply (partial leiningen-test project) (rest args))
     (abort "Unknown option")))
