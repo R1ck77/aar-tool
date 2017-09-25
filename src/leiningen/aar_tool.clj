@@ -6,7 +6,8 @@
         [couchgames.utils.zip :as czip])
   (:import [java.io File])
   (:require [hara.io.watch]
-            [hara.common.watch :as watch]))
+            [hara.common.watch :as watch]
+            [robert.hooke]))
 
 (def android-home-env-var "ANDROID_HOME")
 
@@ -265,9 +266,10 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 
 (defn- generate-R-java [aapt manifest android-jar res src]
   (let [result (run-aapt aapt src nil manifest android-jar res)]
-    (info (case (:exit result)
-               0 "✓ R.java updated"
-               (clear-trailing \newline (str "❌ error with R.java generation: " ( :err result)))))
+    (info
+     (case (:exit result)
+       0 "✓ R.java updated"
+       (clear-trailing \newline (str "❌ error with R.java generation: " ( :err result)))))
     (flush)
     result))
 
@@ -345,13 +347,43 @@ This can actually happen only if the watch sort of stops itself"
         (info "Using '" java-src "' for the R.java output…")
         (generate-R-java aapt manifest android-jar res java-src)))))
 
+(defn wipe-class-prototype [project]
+  (let [r-files (conj (filter #(re-find #"^R[$].*[.]class" (.getName %)) (file-seq (io/file "target/classes/it/couchgames/lib/cjutils"))) (io/file "target/classes/it/couchgames/lib/cjutils/R.class"))]
+    (println "r-files:" r-files)
+    (dorun (map #(do (println "Deleting" % "in" (.getAbsolutePath (io/file ".")))
+                     (.delete %))
+                r-files))))
+
+(defn whatever [function task project args]
+  (println "About to execute the task" task)
+  ;;; Apply the task
+  (function task project args)
+  (println "Task" task "executed")
+  
+  ;;; if the task is javac, remove the R*.class after compilation
+  (if (= task "compile")
+    (do
+      (println "About to wipe the extra classes")
+      (wipe-class-prototype project)
+      )))
+
+
+(defn activate []
+  (robert.hooke/add-hook #'leiningen.core.main/apply-task #'whatever))
+
+(defn leiningen-test [project & args]
+  (activate)
+  (leiningen.core.main/apply-task "jar" project [])
+  (shutdown-agents))
+
 (defn aar-tool
   "Functions for android development"
-  {:subtasks [#'create-aar #'watch-res #'create-R]}
+  {:subtasks [#'create-aar #'watch-res #'create-R #'test]}
   [project & args]
   (case (first args) 
     nil (info "An action must be provided")
     "create-aar" (create-aar project (rest args))
     "watch-res" (watch-res project (rest args))
     "create-R" (create-R project (rest args))
+    "test" (apply (partial leiningen-test project) (rest args))
     (abort "Unknown option")))
