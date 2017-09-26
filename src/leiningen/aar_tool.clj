@@ -248,9 +248,13 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 (defn activate-compile-hook []
   (robert.hooke/add-hook #'leiningen.core.main/apply-task #'leiningen-task-hook))
 
+(def create-R)
+
 (defn create-aar 
   "Create a AAR library suitable for Android integration"
   [project arguments]
+
+  (create-R project arguments)
   
   (activate-compile-hook)
 
