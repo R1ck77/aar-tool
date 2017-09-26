@@ -81,3 +81,10 @@
   (testing "can read a package in the test resource path"
     (is (= "I'm testing the test\n" (read-test-resource "test-resource")))))
 
+(deftest test-get-library-package
+  (testing "in a sunny day, returns the package in the manifest"
+    (is (= "some.package.name" (aar/get-library-package (read-test-resource "SoundAndroidManifest.xml")))))
+  (testing "calls abort if the package cannot be found"
+    (let [abort-called (atom false)]
+      (with-redefs [leiningen.core.main/abort (fn [ & _] (reset! abort-called true))]
+        (aar/get-library-package (read-test-resource "ManifestWithoutPackage.xml"))))))

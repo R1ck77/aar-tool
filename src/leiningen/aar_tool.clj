@@ -17,6 +17,9 @@
 (def r-txt "R.txt")
 (def non-res-files [#".*[.]swp$" #".*~"])
 
+(defn get-library-package [manifest-content]
+  )
+
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
   [manifest-path]
@@ -150,7 +153,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
     
     (let [sh-arguments (if (nil? sympath)
                          (list aapt
-                               "package"
+                               "packange"
                                "-f"
                                "-m"
                                "-M" manifest
