@@ -10,7 +10,6 @@
         [clojure.java.io :as io]
         [couchgames.utils.zip :as czip]))
 
-
 (deftest test-convert-path-to-absolute
   (testing "converts an empty string to the current directory"
     (is (= (.getAbsolutePath (File. ""))
@@ -75,5 +74,10 @@
       (is (= [:sdk :version :check-jar-file]
              (aar/get-android-jar-location :sdk :version))))))
 
+(defn- read-test-resource [file-name]
+  (slurp (io/resource file-name)))
 
+(deftest test-read-test-resource
+  (testing "can read a package in the test resource path"
+    (is (= "I'm testing the test\n" (read-test-resource "test-resource")))))
 
