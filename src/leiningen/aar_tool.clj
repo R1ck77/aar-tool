@@ -4,7 +4,7 @@
         [clojure.xml :as xml]
         [clojure.java.io :as io]
         [couchgames.utils.zip :as czip])
-  (:import [java.io File])
+  (:import [java.io File ByteArrayInputStream])
   (:require [hara.io.watch]
             [hara.common.watch :as watch]
             [robert.hooke]))
@@ -17,8 +17,14 @@
 (def r-txt "R.txt")
 (def non-res-files [#".*[.]swp$" #".*~"])
 
-(defn get-library-package [manifest-content]
-  )
+(defn get-package-from-manifest [slurpable-content]  
+  (try
+    (or (:package (:attrs  (xml/parse (io/input-stream slurpable-content))))
+        (throw (RuntimeException. "package attribute not found")))
+    (catch Exception e (abort (str "Unable to read the package from the manifest (" (.getMessage e) ")")))))
+
+(defn get-project-package [{manifest :android-manifest}]
+  (get-package-from-manifest manifest))
 
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"

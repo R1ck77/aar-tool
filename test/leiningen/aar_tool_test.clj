@@ -81,10 +81,27 @@
   (testing "can read a package in the test resource path"
     (is (= "I'm testing the test\n" (read-test-resource "test-resource")))))
 
-(deftest test-get-library-package
+(deftest test-get-package-from-manifest
   (testing "in a sunny day, returns the package in the manifest"
-    (is (= "some.package.name" (aar/get-library-package (read-test-resource "SoundAndroidManifest.xml")))))
+    (is (= "some.package.name"
+           (aar/get-package-from-manifest (io/resource "SoundAndroidManifest.xml")))))
   (testing "calls abort if the package cannot be found"
     (let [abort-called (atom false)]
       (with-redefs [leiningen.core.main/abort (fn [ & _] (reset! abort-called true))]
-        (aar/get-library-package (read-test-resource "ManifestWithoutPackage.xml"))))))
+        (aar/get-package-from-manifest (io/resource "ManifestWithoutPackage.xml"))
+        (is @abort-called)))))
+
+(defn create-temp-file []
+  (doto (File/createTempFile "aar-tool-test" ".xml")
+    .deleteOnExit))
+
+(defn create-file-with-resource
+  [name]
+  (let [temp-file (create-temp-file)]
+    (spit temp-file (slurp (io/resource name)))
+      temp-file))
+
+(deftest test-get-project-package
+  (testing "returns the package from the project in a sunny day"
+    (let [manifest (create-file-with-resource "SoundAndroidManifest.xml")]
+      (is (= "some.package.name"(aar/get-project-package {:android-manifest (.getAbsolutePath manifest)}))))))
