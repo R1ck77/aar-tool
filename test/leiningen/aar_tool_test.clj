@@ -117,3 +117,15 @@
            (aar/output-directory-from-package "foo.bar")) )
     (is (= (poors-man-path-from-components "foo" "bar" "baz")
            (aar/output-directory-from-package "foo.bar.baz")))))
+
+(deftest test-R-class-file?
+  (testing "correctly discards the wrong files"
+    (is (not (R-class-file? (io/file "someR.class"))))
+    (is (not (R-class-file? (io/file "Rr$.class"))))
+    (is (not (R-class-file? (io/file "R.java"))))
+    (is (not (R-class-file? (io/file "R$.class")))))
+  (testing "marks the right R files"
+    (is  (R-class-file? (io/file "R.class")))
+    (is  (R-class-file? (io/file "R$foo.class")))
+    (is  (R-class-file? (io/file "R$a.class")))
+    (is  (R-class-file? (io/file "R$foo$bar.class")))))
