@@ -33,6 +33,10 @@
       1 (first components)
       (.toString (java.nio.file.Paths/get (first components) (into-array (rest components)))))))
 
+(defn R-class-file? [file]
+  (and (not (.isDirectory file))
+       (re-find #"^R([$].+)?[.]class" (.getName file))))
+
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
   [manifest-path]

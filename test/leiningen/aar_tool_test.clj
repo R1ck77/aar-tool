@@ -120,12 +120,12 @@
 
 (deftest test-R-class-file?
   (testing "correctly discards the wrong files"
-    (is (not (R-class-file? (io/file "someR.class"))))
-    (is (not (R-class-file? (io/file "Rr$.class"))))
-    (is (not (R-class-file? (io/file "R.java"))))
-    (is (not (R-class-file? (io/file "R$.class")))))
+    (is (not (aar/R-class-file? (io/file "someR.class"))))
+    (is (not (aar/R-class-file? (io/file "Rr$.class"))))
+    (is (not (aar/R-class-file? (io/file "R.java"))))
+    (is (not (aar/R-class-file? (io/file "R$.class")))))
   (testing "marks the right R files"
-    (is  (R-class-file? (io/file "R.class")))
-    (is  (R-class-file? (io/file "R$foo.class")))
-    (is  (R-class-file? (io/file "R$a.class")))
-    (is  (R-class-file? (io/file "R$foo$bar.class")))))
+    (is  (aar/R-class-file? (io/file "R.class")))
+    (is  (aar/R-class-file? (io/file "R$foo.class")))
+    (is  (aar/R-class-file? (io/file "R$a.class")))
+    (is  (aar/R-class-file? (io/file "R$foo$bar.class")))))
