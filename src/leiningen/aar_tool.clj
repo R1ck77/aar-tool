@@ -26,6 +26,10 @@
 (defn get-project-package [{manifest :android-manifest}]
   (get-package-from-manifest manifest))
 
+(defn output-directory-from-package [package]
+  
+  )
+
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
   [manifest-path]

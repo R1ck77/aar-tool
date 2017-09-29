@@ -105,3 +105,15 @@
   (testing "returns the package from the project in a sunny day"
     (let [manifest (create-file-with-resource "SoundAndroidManifest.xml")]
       (is (= "some.package.name"(aar/get-project-package {:android-manifest (.getAbsolutePath manifest)}))))))
+
+(defn poors-man-path-from-components [ & components]
+  (apply str (interpose File/separator components)))
+
+(deftest test-directory-from-package
+  (testing "transforms the package into a directory tree"
+    (is (= "foo"
+           (aar/output-directory-from-package "foo")) )
+    (is (= (poors-man-path-from-components "foo" "bar")
+           (aar/output-directory-from-package "foo.bar")) )
+    (is (= (poors-man-path-from-components "foo" "bar" "baz")
+           (aar/output-directory-from-package "foo.bar.baz")))))
