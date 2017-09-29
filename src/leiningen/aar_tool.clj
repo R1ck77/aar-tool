@@ -27,8 +27,11 @@
   (get-package-from-manifest manifest))
 
 (defn output-directory-from-package [package]
-  
-  )
+  (let [components (clojure.string/split package #"[.]")]
+    (case (count components)
+      0 (throw (RuntimeException. "Unexpected number of package components (0)"))
+      1 (first components)
+      (.toString (java.nio.file.Paths/get (first components) (into-array (rest components)))))))
 
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
