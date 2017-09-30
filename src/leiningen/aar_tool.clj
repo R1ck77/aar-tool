@@ -4,7 +4,8 @@
         [clojure.xml :as xml]
         [clojure.java.io :as io]
         [couchgames.utils.zip :as czip])
-  (:import [java.io File ByteArrayInputStream])
+  (:import [java.io File ByteArrayInputStream]
+           [java.nio.file Paths])
   (:require [hara.io.watch]
             [hara.common.watch :as watch]
             [robert.hooke]))
@@ -36,6 +37,10 @@
 (defn R-class-file? [file]
   (and (not (.isDirectory file))
        (re-find #"^R([$].+)?[.]class" (.getName file))))
+
+;;;; check the Path specification to concat paths
+(defn get-R-directory [{target :target :as project} package-path]
+  (Paths/get target (into-array ["classes"])))
 
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
@@ -148,7 +153,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 (defn- path-from-dirs
   "creating a Path in java 7 from clojure is messy"
   [base & elements]
-  (java.nio.file.Paths/get base (into-array String elements)))
+  (Paths/get base (into-array String elements)))
 
 (defn- copy-file
   "Kudos to this guy: https://clojuredocs.org/clojure.java.io/copy"

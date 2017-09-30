@@ -129,3 +129,7 @@
     (is  (aar/R-class-file? (io/file "R$foo.class")))
     (is  (aar/R-class-file? (io/file "R$a.class")))
     (is  (aar/R-class-file? (io/file "R$foo$bar.class")))))
+
+(deftest test-get-R-directory
+  (testing "concatenates the target dir, classes and a valid package path"
+    (is (aar/get-R-directory {:target "foo"} "foo/bar/baz"))))
