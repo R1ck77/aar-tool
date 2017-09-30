@@ -106,16 +106,16 @@
     (let [manifest (create-file-with-resource "SoundAndroidManifest.xml")]
       (is (= "some.package.name"(aar/get-project-package {:android-manifest (.getAbsolutePath manifest)}))))))
 
-(defn poors-man-path-from-components [ & components]
+(defn path-from-components [ & components]
   (apply str (interpose File/separator components)))
 
 (deftest test-directory-from-package
   (testing "transforms the package into a directory tree"
     (is (= "foo"
            (aar/output-directory-from-package "foo")) )
-    (is (= (poors-man-path-from-components "foo" "bar")
+    (is (= (path-from-components "foo" "bar")
            (aar/output-directory-from-package "foo.bar")) )
-    (is (= (poors-man-path-from-components "foo" "bar" "baz")
+    (is (= (path-from-components "foo" "bar" "baz")
            (aar/output-directory-from-package "foo.bar.baz")))))
 
 (deftest test-R-class-file?
@@ -130,6 +130,9 @@
     (is  (aar/R-class-file? (io/file "R$a.class")))
     (is  (aar/R-class-file? (io/file "R$foo$bar.class")))))
 
+
 (deftest test-get-R-directory
   (testing "concatenates the target dir, classes and a valid package path"
-    (is (aar/get-R-directory {:target "foo"} "foo/bar/baz"))))
+    (is (.endsWith (aar/get-R-directory {:target "foobar"}
+                                (path-from-components "foo" "bar" "baz"))
+                   (path-from-components "foobar" "classes" "foo" "bar" "baz")))))

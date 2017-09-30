@@ -40,7 +40,7 @@
 
 ;;;; check the Path specification to concat paths
 (defn get-R-directory [{target :target :as project} package-path]
-  (Paths/get target (into-array ["classes"])))
+  (.toString (Paths/get target (into-array ["classes" package-path]))))
 
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
