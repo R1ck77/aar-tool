@@ -130,9 +130,23 @@
     (is  (aar/R-class-file? (io/file "R$a.class")))
     (is  (aar/R-class-file? (io/file "R$foo$bar.class")))))
 
-
 (deftest test-get-R-directory
   (testing "concatenates the target dir, classes and a valid package path"
     (is (.endsWith (aar/get-R-directory {:target "foobar"}
                                 (path-from-components "foo" "bar" "baz"))
                    (path-from-components "foobar" "classes" "foo" "bar" "baz")))))
+
+
+(deftest test-R-files-in-directory
+  (testing "uses list dir and R-class-file? to find the R files in the directory"
+    (let [list-argument (atom nil)
+          R-class-file?-invocations (atom 0)]
+      (with-redefs [aar/R-class-file? (fn [x]
+                                        (swap! R-class-file?-invocations inc)
+                                        (= x :R-stuff))
+                    aar/list-dir (fn [path]
+                                   (reset! list-argument path)
+                                   (list :not-R-stuff :R-stuff :other-not-R-stuff :R-stuff))]
+        (is (= (list :R-stuff :R-stuff) (aar/R-files-in-directory :directory)))
+        (is (= :directory @list-argument))
+        (is (>= 4 @R-class-file?-invocations))))))
