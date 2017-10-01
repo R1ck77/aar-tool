@@ -38,14 +38,23 @@
   (and (not (.isDirectory file))
        (re-find #"^R([$].+)?[.]class" (.getName file))))
 
-(defn get-R-directory [{target :target :as project} package-path]
+(defn get-R-directory [{target :target-path :as project} package-path]
   (.toString (Paths/get target (into-array ["classes" package-path]))))
 
 (defn list-dir [path]
   (-> path io/file .list seq))
 
-(defn R-files-in-directory [path]
+(defn R-files-in-directory  
+  [path]
+  {:pre [(instance? File path)]}
   (filter R-class-file? (list-dir path)))
+
+(defn R-class-files [project]
+  (println "project: " project)
+  (println "package: " (get-project-package project))
+  (println "output directory: " (output-directory-from-package (get-project-package project)))
+  (println "R files directory: " (get-R-directory project (get-R-directory project (get-project-package project))))
+  (R-files-in-directory (get-R-directory project (output-directory-from-package (get-project-package project)))))
 
 (defn- get-api-level 
   "Return the value of maxSdkVersion or targetSdkVersion or minSdkVersion or 1"
@@ -257,7 +266,7 @@ If create-if-missing is set to true, the function will try to fix that, no solut
 (defn wipe-class-prototype [project]
   (info "### About to mangle the file, this is gross 2-girls-one-cup stuff: PLEASE FIX THIS!!!!!")
   (let [r-files (conj (filter #(re-find #"^R[$].*[.]class" (.getName %)) (file-seq (io/file "target/classes/it/couchgames/lib/cjutils"))) (io/file "target/classes/it/couchgames/lib/cjutils/R.class"))]
-    (println "r-files:" r-files)
+    (println "r-files:" (R-class-files project))
     (dorun (map #(do
                    (println "Deleting" % "in" (.getAbsolutePath (io/file ".")))
                      (.delete %))

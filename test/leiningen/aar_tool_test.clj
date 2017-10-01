@@ -104,7 +104,8 @@
 (deftest test-get-project-package
   (testing "returns the package from the project in a sunny day"
     (let [manifest (create-file-with-resource "SoundAndroidManifest.xml")]
-      (is (= "some.package.name"(aar/get-project-package {:android-manifest (.getAbsolutePath manifest)}))))))
+      (is (= "some.package.name"
+             (aar/get-project-package {:android-manifest (.getAbsolutePath manifest)}))))))
 
 (defn path-from-components [ & components]
   (apply str (interpose File/separator components)))
@@ -132,7 +133,7 @@
 
 (deftest test-get-R-directory
   (testing "concatenates the target dir, classes and a valid package path"
-    (is (.endsWith (aar/get-R-directory {:target "foobar"}
+    (is (.endsWith (aar/get-R-directory {:target-path "foobar"}
                                 (path-from-components "foo" "bar" "baz"))
                    (path-from-components "foobar" "classes" "foo" "bar" "baz")))))
 
@@ -147,6 +148,15 @@
                     aar/list-dir (fn [path]
                                    (reset! list-argument path)
                                    (list :not-R-stuff :R-stuff :other-not-R-stuff :R-stuff))]
-        (is (= (list :R-stuff :R-stuff) (aar/R-files-in-directory :directory)))
-        (is (= :directory @list-argument))
+        (is (= (list :R-stuff :R-stuff) (aar/R-files-in-directory (io/file "directory"))))
+        (is (= (io/file "directory") @list-argument))
         (is (>= 4 @R-class-file?-invocations))))))
+
+
+(deftest test-R-class-files
+  (testing "invokes a number of simpler functions to get the list of R class files"
+    (let [
+          ]
+      (with-redefs [aar/R-files-in-directory (fn [path])
+                    ]
+        ))))
