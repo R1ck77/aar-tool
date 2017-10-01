@@ -10,6 +10,9 @@
             [hara.common.watch :as watch]
             [robert.hooke]))
 
+;;; (use '[clojure.tools.nrepl.server :only (start-server stop-server)])
+;;; (defonce server (start-server :port 7888))
+
 (def android-home-env-var "ANDROID_HOME")
 
 (def aar-build-dir "aar")
@@ -35,6 +38,7 @@
       (.toString (java.nio.file.Paths/get (first components) (into-array (rest components)))))))
 
 (defn R-class-file? [file]
+  {:pre [(instance? File file)]}
   (and (not (.isDirectory file))
        (re-find #"^R([$].+)?[.]class" (.getName file))))
 
@@ -42,18 +46,14 @@
   (.toString (Paths/get target (into-array ["classes" package-path]))))
 
 (defn list-dir [path]
-  (-> path io/file .list seq))
+  (->> path io/file .list (map io/file)))
 
 (defn R-files-in-directory  
   [path]
-  {:pre [(instance? File path)]}
-  (filter R-class-file? (list-dir path)))
+  {:pre [(instance? String path)]}
+  (map #(io/file path (.toString %)) (filter R-class-file? (list-dir path))))
 
 (defn R-class-files [project]
-  (println "project: " project)
-  (println "package: " (get-project-package project))
-  (println "output directory: " (output-directory-from-package (get-project-package project)))
-  (println "R files directory: " (get-R-directory project (get-R-directory project (get-project-package project))))
   (R-files-in-directory (get-R-directory project (output-directory-from-package (get-project-package project)))))
 
 (defn- get-api-level 
@@ -263,25 +263,20 @@ If create-if-missing is set to true, the function will try to fix that, no solut
     (if (not= 0 (:exit res))
         (abort (str "Invocation of aapt failed with error: \"" (:err res) "\"")))))
 
-(defn wipe-class-prototype [project]
-  (info "### About to mangle the file, this is gross 2-girls-one-cup stuff: PLEASE FIX THIS!!!!!")
-  (let [r-files (conj (filter #(re-find #"^R[$].*[.]class" (.getName %)) (file-seq (io/file "target/classes/it/couchgames/lib/cjutils"))) (io/file "target/classes/it/couchgames/lib/cjutils/R.class"))]
-    (println "r-files:" (R-class-files project))
-    (dorun (map #(do
-                   (println "Deleting" % "in" (.getAbsolutePath (io/file ".")))
-                     (.delete %))
-                r-files))))
+(defn wipe-extra-classes [project]
+  (dorun
+   (map (fn [file]
+          (info (str "Removing " (.getName file) "…"))
+          (.delete file)) (R-class-files project))))
 
 (defn leiningen-task-hook [function task project args]
-  (println "About to execute the task" task)
+  (debug "About to execute the task" task)
   ;;; Apply the task
   (let [result (function task project args)]
-    (println "Task" task "executed")
+    (debug "Task" task "executed")
       ;;; if the task is javac, remove the R*.class after compilation
     (if (= task "compile")
-      (do
-        (println "About to wipe the extra classes")
-        (wipe-class-prototype project)))
+      (wipe-extra-classes project))
     result))
 
 (defn activate-compile-hook []

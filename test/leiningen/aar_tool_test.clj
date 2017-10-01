@@ -148,8 +148,10 @@
                     aar/list-dir (fn [path]
                                    (reset! list-argument path)
                                    (list :not-R-stuff :R-stuff :other-not-R-stuff :R-stuff))]
-        (is (= (list :R-stuff :R-stuff) (aar/R-files-in-directory (io/file "directory"))))
-        (is (= (io/file "directory") @list-argument))
+        (is (= (list (io/file "directory/:R-stuff")
+                     (io/file "directory/:R-stuff"))
+               (aar/R-files-in-directory "directory")))
+        (is (= "directory" @list-argument))
         (is (>= 4 @R-class-file?-invocations))))))
 
 
