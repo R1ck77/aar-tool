@@ -1,11 +1,20 @@
 # aar-tool
 
-A Leiningen plugin to ease the development of Android .aar projects
+A Leiningen plugin to ease the development of mixed Clojure/Android projects.
 
-## Usage
+It can be used to create .aar files from leningen projects to be included as external libraries into Android projects.
 
-Put `[aar-tool "0.1.0-SNAPSHOT"]` into the `:plugins`
-vector of your project.clj.
+As of now, the tool only creates library .aar but could be probably extended easily to create whole applications.
+
+This is a one of my earliest Clojure projects, and it was hastly crammed together for my personal use so keep any expectation low, especially as far as ease of use is concerned.
+
+## Requirements 
+
+*TODO*
+
+## Configuration
+
+Add `aar-tool` as a dependency by adding `[aar-tool "0.1.0-SNAPSHOT"]` to your project's `:plugins` in `project.clj`.
 
 You will need to add some configuration values to the `project.clj`:
 
